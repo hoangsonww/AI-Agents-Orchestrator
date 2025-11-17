@@ -13,7 +13,7 @@ agents:
   # Google Gemini - Code review and architecture analysis
   gemini:
     enabled: true
-    command: "gemini-cli"
+    command: "gemini"
     role: "review"
     timeout: 180
     description: "Reviews code for SOLID principles and best practices"

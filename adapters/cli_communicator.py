@@ -348,8 +348,8 @@ class AgentCLIRegistry:
             'supports_workspace': True,
             'output_format': 'text'
         },
-        'gemini-cli': {
-            'command': 'gemini-cli',
+        'gemini': {
+            'command': 'gemini',
             'method': 'arg',
             'prompt_flag': '--prompt',
             'supports_workspace': False,
