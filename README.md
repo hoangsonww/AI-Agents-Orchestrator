@@ -14,6 +14,9 @@ This project provides a wrapper CLI that coordinates multiple AI agents to work 
 ## Features
 
 - 🤝 **Multi-Agent Collaboration**: Coordinate multiple AI coding assistants
+- 💬 **Interactive Shell**: REPL-style interface with multi-round conversations (like Claude Code & Codex CLIs)
+- 📝 **Conversation History**: Context preservation across interactions
+- 💾 **Session Management**: Save and load conversation sessions
 - 🔧 **Extensible Architecture**: Easy to add new AI agents
 - ⚙️ **Configurable Workflows**: Define custom collaboration patterns
 - 📊 **Detailed Logging**: Track agent interactions and decisions
@@ -112,36 +115,73 @@ workflows:
 
 ## Usage
 
-### Basic Usage
+### Interactive Shell (Recommended)
+
+Start an interactive shell for multi-round conversations, similar to Claude Code and Codex CLIs:
+
+```bash
+# Start interactive shell
+./ai-orchestrator shell
+
+# Start with specific workflow
+./ai-orchestrator shell --workflow thorough
+```
+
+**Interactive features:**
+- Multi-round conversations with context preservation
+- Switch between agents on-the-fly
+- Save and load conversation sessions
+- Full readline support (arrow keys, command history, tab completion)
+- Shell commands for control (/help, /switch, /save, etc.)
+
+See [Interactive Shell Guide](docs/interactive-shell.md) for detailed documentation.
+
+**Example interactive session:**
+
+```
+orchestrator (default) > Create a user authentication module with JWT
+
+✓ Task completed successfully!
+
+orchestrator (default) > Add password reset functionality
+
+✓ Task completed successfully!
+
+orchestrator (default) > /save auth-module
+Session saved!
+
+orchestrator (default) > /exit
+```
+
+### One-Shot Command Mode
+
+For single, non-interactive tasks:
 
 ```bash
 # Run with default workflow
-./ai-orchestrator "Create a REST API with user authentication"
+./ai-orchestrator run "Create a REST API with user authentication"
 
 # Specify a custom workflow
-./ai-orchestrator --workflow custom "Implement a binary search tree"
+./ai-orchestrator run "Implement a binary search tree" --workflow thorough
 
 # Dry run to see the execution plan
-./ai-orchestrator --dry-run "Add error handling to the payment service"
+./ai-orchestrator run "Add error handling to the payment service" --dry-run
 
 # Verbose mode for detailed logging
-./ai-orchestrator -v "Refactor the database layer"
+./ai-orchestrator run "Refactor the database layer" --verbose
 ```
 
 ### Advanced Usage
 
 ```bash
-# Use specific agents only
-./ai-orchestrator --agents codex,claude "Optimize the sorting algorithm"
-
 # Set maximum iterations
-./ai-orchestrator --max-iterations 5 "Implement and test a caching layer"
+./ai-orchestrator run "Implement and test a caching layer" --max-iterations 5
 
 # Output to specific directory
-./ai-orchestrator --output ./output "Generate a CLI tool for file processing"
+./ai-orchestrator run "Generate a CLI tool" --output ./output
 
-# Interactive mode
-./ai-orchestrator --interactive
+# Custom configuration
+./ai-orchestrator run "Task description" --config ./my-config.yaml
 ```
 
 ## Workflow Examples
@@ -149,7 +189,7 @@ workflows:
 ### 1. Standard Implementation Flow
 
 ```bash
-./ai-orchestrator "Create a user authentication module with JWT tokens"
+./ai-orchestrator run "Create a user authentication module with JWT tokens"
 ```
 
 **Process:**
@@ -161,24 +201,27 @@ workflows:
 ### 2. Review-Only Workflow
 
 ```bash
-./ai-orchestrator --workflow review-only --file ./src/auth.py
+./ai-orchestrator run "Review this code" --workflow review-only
 ```
 
 **Process:**
 1. Gemini reviews existing code
 2. Claude implements improvements
 
-### 3. Collaborative Development
+### 3. Interactive Development Session
 
 ```bash
-./ai-orchestrator --workflow collaborative "Build a task queue system"
+./ai-orchestrator shell
+
+> Create a task queue system
+> Add priority support
+> Add worker pool management
+> Write tests for the task queue
+> /save task-queue-project
 ```
 
 **Process:**
-1. Codex creates initial implementation
-2. Copilot suggests optimizations
-3. Gemini reviews architecture
-4. Claude implements all feedback
+Multi-round conversation with context preservation, allowing iterative refinement
 
 ## Project Structure
 
@@ -189,24 +232,27 @@ AI-Coding-Tools-Collaborative/
 │   ├── __init__.py
 │   ├── core.py              # Core orchestration logic
 │   ├── workflow.py          # Workflow management
-│   └── task_manager.py      # Task distribution
+│   ├── task_manager.py      # Task distribution
+│   └── shell.py             # Interactive shell/REPL
 ├── adapters/
 │   ├── __init__.py
 │   ├── base.py              # Base adapter interface
+│   ├── cli_communicator.py  # Robust CLI communication
 │   ├── claude_adapter.py    # Claude Code adapter
 │   ├── codex_adapter.py     # Codex adapter
 │   ├── gemini_adapter.py    # Gemini adapter
 │   └── copilot_adapter.py   # Copilot adapter
 ├── config/
-│   ├── agents.yaml          # Agent configuration
-│   └── workflows.yaml       # Workflow definitions
+│   └── agents.yaml          # Agent and workflow configuration
 ├── tests/
 │   ├── __init__.py
 │   ├── test_adapters.py     # Adapter tests
 │   ├── test_orchestrator.py # Orchestrator tests
-│   └── test_integration.py  # End-to-end tests
+│   ├── test_integration.py  # End-to-end tests
+│   └── test_shell.py        # Interactive shell tests
 ├── docs/
 │   ├── architecture.md      # Architecture details
+│   ├── interactive-shell.md # Interactive shell guide
 │   ├── adding-agents.md     # Guide for adding new agents
 │   └── workflows.md         # Workflow configuration guide
 ├── examples/

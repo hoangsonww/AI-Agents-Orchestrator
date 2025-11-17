@@ -20,7 +20,7 @@ import yaml
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from orchestrator import Orchestrator
+from orchestrator import Orchestrator, InteractiveShell
 from adapters import AgentCapability
 
 
@@ -303,6 +303,56 @@ def version():
     """Show version information."""
     console.print("[bold cyan]AI Orchestrator[/bold cyan] version 1.0.0")
     console.print("A collaborative AI coding assistant orchestration system")
+
+
+@cli.command()
+@click.option('--config', '-c', type=click.Path(exists=True),
+              help='Path to configuration file')
+@click.option('--workflow', '-w', default='default',
+              help='Default workflow to use')
+def shell(config, workflow):
+    """
+    Start an interactive shell for multi-round conversations.
+
+    The interactive shell provides a REPL-style interface similar to
+    Claude Code and Codex CLIs, allowing multi-round conversations,
+    context preservation, and iterative development.
+
+    Examples:
+        ai-orchestrator shell
+        ai-orchestrator shell --workflow thorough
+    """
+    config_path = config or Path(__file__).parent / "config" / "agents.yaml"
+
+    # Setup logging for shell
+    setup_logging('INFO', 'ai-orchestrator.log')
+
+    try:
+        # Create and start interactive shell
+        interactive_shell = InteractiveShell(config_path)
+        interactive_shell.history.workflow = workflow
+        interactive_shell.start()
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Exiting...[/yellow]")
+    except Exception as e:
+        console.print(f"[red]Error starting shell: {e}[/red]")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option('--config', '-c', type=click.Path(exists=True),
+              help='Path to configuration file')
+@click.option('--workflow', '-w', default='default',
+              help='Default workflow to use')
+def interactive(config, workflow):
+    """
+    Alias for 'shell' command - start interactive mode.
+
+    Same as running 'ai-orchestrator shell'.
+    """
+    # Just call shell with same parameters
+    ctx = click.get_current_context()
+    ctx.invoke(shell, config=config, workflow=workflow)
 
 
 if __name__ == '__main__':
