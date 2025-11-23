@@ -1,8 +1,31 @@
+# Production Dependencies
 click>=8.1.0
 pyyaml>=6.0
 colorama>=0.4.6
 rich>=13.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+tenacity>=8.2.0
+python-dotenv>=1.0.0
+structlog>=23.1.0
+prometheus-client>=0.17.0
+
+# Development Dependencies
 pytest>=7.4.0
 pytest-cov>=4.1.0
 pytest-asyncio>=0.21.0
-pydantic>=2.0.0
+pytest-mock>=3.11.0
+pytest-timeout>=2.1.0
+black>=23.7.0
+isort>=5.12.0
+flake8>=6.1.0
+flake8-docstrings>=1.7.0
+flake8-bugbear>=23.7.10
+mypy>=1.5.0
+pylint>=2.17.0
+bandit>=1.7.5
+safety>=2.3.5
+pre-commit>=3.3.3
+coverage[toml]>=7.3.0
+types-PyYAML>=6.0.0
+types-click>=7.1.0

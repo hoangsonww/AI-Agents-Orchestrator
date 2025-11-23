@@ -1,0 +1,44 @@
+[Unit]
+Description=AI Orchestrator Service
+After=network.target
+Documentation=https://github.com/your-org/ai-orchestrator
+
+[Service]
+Type=simple
+User=orchestrator
+Group=orchestrator
+WorkingDirectory=/opt/ai-orchestrator
+Environment="PATH=/opt/ai-orchestrator/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/etc/ai-orchestrator/environment
+
+ExecStartPre=/bin/mkdir -p /var/log/ai-orchestrator
+ExecStartPre=/bin/mkdir -p /var/lib/ai-orchestrator/{output,workspace,reports,sessions}
+
+ExecStart=/opt/ai-orchestrator/venv/bin/ai-orchestrator shell
+
+Restart=always
+RestartSec=10s
+StartLimitInterval=200
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ai-orchestrator /var/log/ai-orchestrator
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryLimit=2G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-orchestrator
+
+[Install]
+WantedBy=multi-user.target
