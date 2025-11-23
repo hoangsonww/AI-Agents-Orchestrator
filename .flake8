@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 100
+extend-ignore = E203, E266, E501, W503
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .eggs,
+    *.egg-info,
+    .tox,
+    .venv,
+    venv,
+    */migrations/*,
+    */static/*,
+per-file-ignores =
+    __init__.py:F401
+max-complexity = 10
+docstring-convention = google

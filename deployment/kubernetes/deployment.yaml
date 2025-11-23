@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    version: v1.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ai-orchestrator
+  template:
+    metadata:
+      labels:
+        app: ai-orchestrator
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: ai-orchestrator
+          image: ghcr.io/your-org/ai-orchestrator:latest
+          imagePullPolicy: Always
+
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          env:
+            - name: APP_ENV
+              value: "production"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: ENABLE_METRICS
+              value: "true"
+            - name: METRICS_PORT
+              value: "9090"
+
+          envFrom:
+            - configMapRef:
+                name: ai-orchestrator-config
+            - secretRef:
+                name: ai-orchestrator-secrets
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import sys; sys.exit(0)"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import sys; sys.exit(0)"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: output
+              mountPath: /app/output
+            - name: workspace
+              mountPath: /app/workspace
+            - name: logs
+              mountPath: /app/logs
+
+      volumes:
+        - name: config
+          configMap:
+            name: ai-orchestrator-config-file
+        - name: output
+          persistentVolumeClaim:
+            claimName: ai-orchestrator-output
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: ai-orchestrator-workspace
+        - name: logs
+          persistentVolumeClaim:
+            claimName: ai-orchestrator-logs
+
+      restartPolicy: Always

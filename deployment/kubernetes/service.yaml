@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9090
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app: ai-orchestrator
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestrator-headless
+  labels:
+    app: ai-orchestrator
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 9090
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app: ai-orchestrator

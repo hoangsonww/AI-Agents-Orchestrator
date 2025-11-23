@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  ai-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-orchestrator:latest
+    container_name: ai-orchestrator
+    restart: unless-stopped
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - METRICS_PORT=9090
+    volumes:
+      # Mount configuration
+      - ./config:/app/config:ro
+      # Mount output directories
+      - ./output:/app/output
+      - ./workspace:/app/workspace
+      - ./reports:/app/reports
+      - ./sessions:/app/sessions
+      - ./logs:/app/logs
+    ports:
+      - "9090:9090"  # Metrics
+    networks:
+      - orchestrator-network
+    command: ["shell"]
+    stdin_open: true
+    tty: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Prometheus for metrics collection (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: orchestrator-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9091:9090"
+    networks:
+      - orchestrator-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    profiles:
+      - monitoring
+
+  # Grafana for visualization (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: orchestrator-grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - orchestrator-network
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    profiles:
+      - monitoring
+
+networks:
+  orchestrator-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
