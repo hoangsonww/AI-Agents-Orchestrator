@@ -1,0 +1,225 @@
+---
+# ServiceMonitor for Prometheus
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ai-orchestrator
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: ai-orchestrator
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+
+---
+# PrometheusRule for Alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ai-orchestrator-alerts
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: ai-orchestrator
+      interval: 30s
+      rules:
+        # High error rate
+        - alert: HighErrorRate
+          expr: |
+            rate(http_requests_total{job="ai-orchestrator",status=~"5.."}[5m])
+            /
+            rate(http_requests_total{job="ai-orchestrator"}[5m])
+            > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            component: api
+          annotations:
+            summary: "High error rate detected"
+            description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+        # Service down
+        - alert: ServiceDown
+          expr: up{job="ai-orchestrator"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            component: service
+          annotations:
+            summary: "Service is down"
+            description: "AI Orchestrator service has been down for more than 1 minute"
+
+        # High response time
+        - alert: HighResponseTime
+          expr: |
+            histogram_quantile(0.95,
+              rate(http_request_duration_seconds_bucket{job="ai-orchestrator"}[5m])
+            ) > 5
+          for: 5m
+          labels:
+            severity: warning
+            component: performance
+          annotations:
+            summary: "High response time detected"
+            description: "95th percentile response time is {{ $value }}s (threshold: 5s)"
+
+        # High memory usage
+        - alert: HighMemoryUsage
+          expr: |
+            container_memory_usage_bytes{pod=~"ai-orchestrator-.*"}
+            /
+            container_spec_memory_limit_bytes{pod=~"ai-orchestrator-.*"}
+            > 0.85
+          for: 5m
+          labels:
+            severity: warning
+            component: resource
+          annotations:
+            summary: "High memory usage"
+            description: "Memory usage is {{ $value | humanizePercentage }} of limit"
+
+        # High CPU usage
+        - alert: HighCPUUsage
+          expr: |
+            rate(container_cpu_usage_seconds_total{pod=~"ai-orchestrator-.*"}[5m])
+            /
+            container_spec_cpu_quota{pod=~"ai-orchestrator-.*"}
+            > 0.80
+          for: 5m
+          labels:
+            severity: warning
+            component: resource
+          annotations:
+            summary: "High CPU usage"
+            description: "CPU usage is {{ $value | humanizePercentage }} of limit"
+
+        # Pod restart loop
+        - alert: PodRestartLoop
+          expr: rate(kube_pod_container_status_restarts_total{pod=~"ai-orchestrator-.*"}[15m]) > 0
+          for: 5m
+          labels:
+            severity: critical
+            component: pod
+          annotations:
+            summary: "Pod is restarting frequently"
+            description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes"
+
+        # Pod not ready
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_phase{pod=~"ai-orchestrator-.*",phase!="Running"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            component: pod
+          annotations:
+            summary: "Pod is not ready"
+            description: "Pod {{ $labels.pod }} has been in {{ $labels.phase }} state for more than 10 minutes"
+
+        # Deployment replica mismatch
+        - alert: DeploymentReplicaMismatch
+          expr: |
+            kube_deployment_spec_replicas{deployment=~"ai-orchestrator-.*"}
+            !=
+            kube_deployment_status_replicas_available{deployment=~"ai-orchestrator-.*"}
+          for: 15m
+          labels:
+            severity: warning
+            component: deployment
+          annotations:
+            summary: "Deployment replica mismatch"
+            description: "Deployment {{ $labels.deployment }} has {{ $value }} replicas but desired is {{ $labels.spec_replicas }}"
+
+        # Low disk space
+        - alert: LowDiskSpace
+          expr: |
+            (node_filesystem_avail_bytes{mountpoint="/app"}
+            /
+            node_filesystem_size_bytes{mountpoint="/app"})
+            < 0.10
+          for: 5m
+          labels:
+            severity: warning
+            component: storage
+          annotations:
+            summary: "Low disk space"
+            description: "Disk space is {{ $value | humanizePercentage }} available (threshold: 10%)"
+
+---
+# Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-orchestrator-dashboard
+  namespace: ai-orchestrator
+  labels:
+    grafana_dashboard: "1"
+data:
+  ai-orchestrator-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "AI Orchestrator Metrics",
+        "tags": ["ai-orchestrator"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Request Rate",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"ai-orchestrator\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Error Rate",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"ai-orchestrator\",status=~\"5..\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Response Time (p95)",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"ai-orchestrator\"}[5m]))"
+              }
+            ]
+          },
+          {
+            "title": "Memory Usage",
+            "targets": [
+              {
+                "expr": "container_memory_usage_bytes{pod=~\"ai-orchestrator-.*\"}"
+              }
+            ]
+          },
+          {
+            "title": "CPU Usage",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total{pod=~\"ai-orchestrator-.*\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Pod Status",
+            "targets": [
+              {
+                "expr": "kube_pod_status_phase{pod=~\"ai-orchestrator-.*\"}"
+              }
+            ]
+          }
+        ]
+      }
+    }

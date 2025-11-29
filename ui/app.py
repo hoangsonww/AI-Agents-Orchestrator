@@ -96,6 +96,102 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/health", methods=["GET"])
+def health():
+    """Health check endpoint for Kubernetes liveness probe."""
+    return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()}), 200
+
+
+@app.route("/ready", methods=["GET"])
+def readiness():
+    """Readiness check endpoint for Kubernetes readiness probe."""
+    try:
+        # Check if orchestrator is initialized
+        if orchestrator is None:
+            return (
+                jsonify(
+                    {
+                        "status": "not ready",
+                        "reason": "orchestrator not initialized",
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                ),
+                503,
+            )
+
+        # Check if agents are available
+        agents_available = any(adapter.is_available() for adapter in orchestrator.adapters.values())
+
+        if not agents_available:
+            return (
+                jsonify(
+                    {
+                        "status": "not ready",
+                        "reason": "no agents available",
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                ),
+                503,
+            )
+
+        return (
+            jsonify(
+                {
+                    "status": "ready",
+                    "agents_count": len(orchestrator.adapters),
+                    "timestamp": datetime.now().isoformat(),
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        return (
+            jsonify(
+                {"status": "not ready", "reason": str(e), "timestamp": datetime.now().isoformat()}
+            ),
+            503,
+        )
+
+
+@app.route("/metrics", methods=["GET"])
+def metrics():
+    """Prometheus-compatible metrics endpoint."""
+    try:
+        if not orchestrator:
+            init_orchestrator()
+
+        # Gather metrics
+        agents_total = len(orchestrator.adapters)
+        agents_available = sum(
+            1 for adapter in orchestrator.adapters.values() if adapter.is_available()
+        )
+
+        metrics_output = f"""# HELP ai_orchestrator_agents_total Total number of agents
+# TYPE ai_orchestrator_agents_total gauge
+ai_orchestrator_agents_total {agents_total}
+
+# HELP ai_orchestrator_agents_available Number of available agents
+# TYPE ai_orchestrator_agents_available gauge
+ai_orchestrator_agents_available {agents_available}
+
+# HELP ai_orchestrator_session_active Is there an active session
+# TYPE ai_orchestrator_session_active gauge
+ai_orchestrator_session_active {1 if current_session["status"] != "idle" else 0}
+
+# HELP ai_orchestrator_up Service is up
+# TYPE ai_orchestrator_up gauge
+ai_orchestrator_up 1
+"""
+        return metrics_output, 200, {"Content-Type": "text/plain; version=0.0.4"}
+    except Exception as e:
+        logger.error(f"Error generating metrics: {e}")
+        return (
+            f"# Error generating metrics: {str(e)}\n",
+            500,
+            {"Content-Type": "text/plain; version=0.0.4"},
+        )
+
+
 @app.route("/api/agents", methods=["GET"])
 def get_agents():
     """Get list of available agents."""
