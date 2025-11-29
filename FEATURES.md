@@ -72,7 +72,7 @@ workflows:
 ### Interactive Shell
 
 <p align="center">
-  <img src="docs/images/interactive.png" alt="Interactive Shell" width="600"/>
+  <img src="docs/images/interactive.png" alt="Interactive Shell" width="100%"/>
 </p>
 
 A powerful REPL-style interface for natural conversations with AI agents.
@@ -192,7 +192,7 @@ graph TD
 ## Web UI Features
 
 <p align="center">
-  <img src="docs/images/ui.png" alt="Web UI" width="600"/>
+  <img src="docs/images/ui.png" alt="Web UI" width="100%"/>
 </p>
 
 ### Modern Interface

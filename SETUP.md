@@ -55,7 +55,7 @@ You need **at least one** of these AI CLI tools installed:
 ```bash
 # 1. Clone repository
 git clone <repository-url>
-cd AI-Coding-Tools-Collaborative
+cd AI-Agents-Orchestrator
 
 # 2. Install Python dependencies
 pip3 install -r requirements.txt
@@ -79,7 +79,7 @@ chmod +x ai-orchestrator
 
 ```bash
 git clone <repository-url>
-cd AI-Coding-Tools-Collaborative
+cd AI-Agents-Orchestrator
 ```
 
 ### Step 2: Create Virtual Environment (Recommended)

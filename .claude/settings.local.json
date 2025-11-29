@@ -4,7 +4,6 @@
       "Bash(test:*)",
       "Bash(cp:*)",
       "Bash(python3 -m pip:*)",
-      "Bash(/Users/davidnguyen/PycharmProjects/AI-Coding-Tools-Collaborative/ai-orchestrator:*)",
       "Bash(python3 -m pytest:*)",
       "Bash(python3:*)",
       "Bash(gemini --version:*)",
