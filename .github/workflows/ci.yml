@@ -88,12 +88,16 @@ jobs:
           docker push ghcr.io/${{ github.repository_owner }}/ai-agents-orchestrator:${{ github.sha }}
           docker push ghcr.io/${{ github.repository_owner }}/ai-agents-orchestrator:latest
 
+  pipeline-summary:
+    runs-on: ubuntu-latest
+    needs: push-to-ghcr
+    steps:
       - name: 'Phase 4️⃣: Pipeline Summary'
         run: |
           echo "## ✅ CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Linting & Formatting**: Completed (errors were silenced)." >> $GITHUB_STEP_SUMMARY
           echo "- **Docker Image**: Built and pushed to GHCR." >> $GITHUB_STEP_SUMMARY
-          echo "- **Tags**:
+          echo "- **Tags**: 
             latest
              and
             ${{ github.sha }}

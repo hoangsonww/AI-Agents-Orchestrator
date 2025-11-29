@@ -2,6 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vue.js&logoColor=white)
+![Nuxt](https://img.shields.io/badge/Nuxt-3.x-00C58E?logo=nuxt&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-2.x-000000?logo=flask&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?logo=docker&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-326CE5?logo=kubernetes&logoColor=white)
