@@ -74,7 +74,7 @@ This deployment guide covers a complete production-ready Azure infrastructure st
 │  └──────────────┘   │               │  │     ACR      │   │
 │                     │               │  │  (Replica)   │   │
 │  ┌──────────────┐   │               │  └──────────────┘   │
-│  │     ACR      │───┼──────────────────────────────────────┘
+│  │     ACR      │───┼─────────────────────────────────────┘
 │  │  (Premium)   │   │ Geo-Replication
 │  └──────────────┘   │
 │                     │
@@ -1382,7 +1382,3 @@ For application issues:
 4. Open GitHub issue
 
 ---
-
-**Last Updated**: 2024-01-15
-**Version**: 1.0.0
-**Maintained By**: DevOps Team
