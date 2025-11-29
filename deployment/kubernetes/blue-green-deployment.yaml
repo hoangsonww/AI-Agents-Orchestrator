@@ -1,0 +1,241 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestrator-service
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+spec:
+  type: LoadBalancer
+  selector:
+    app: ai-orchestrator
+    version: blue  # Switch between 'blue' and 'green' for deployment
+  ports:
+    - name: http
+      port: 80
+      targetPort: 5001
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+  sessionAffinity: ClientIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-orchestrator-blue
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    version: blue
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: ai-orchestrator
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: ai-orchestrator
+        version: blue
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - ai-orchestrator
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: ai-orchestrator
+          image: ai-orchestrator:blue
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5001
+              name: http
+              protocol: TCP
+            - containerPort: 9090
+              name: metrics
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: VERSION
+              value: "blue"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: UI_BACKEND_PORT
+              value: "5001"
+          envFrom:
+            - configMapRef:
+                name: ai-orchestrator-config
+            - secretRef:
+                name: ai-orchestrator-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: workspace
+              mountPath: /app/workspace
+            - name: sessions
+              mountPath: /app/sessions
+      volumes:
+        - name: config
+          configMap:
+            name: ai-orchestrator-config
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: ai-orchestrator-workspace-pvc
+        - name: sessions
+          persistentVolumeClaim:
+            claimName: ai-orchestrator-sessions-pvc
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-orchestrator-green
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    version: green
+spec:
+  replicas: 0  # Start with 0, scale up during deployment
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: ai-orchestrator
+      version: green
+  template:
+    metadata:
+      labels:
+        app: ai-orchestrator
+        version: green
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - ai-orchestrator
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: ai-orchestrator
+          image: ai-orchestrator:green
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5001
+              name: http
+              protocol: TCP
+            - containerPort: 9090
+              name: metrics
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: VERSION
+              value: "green"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: UI_BACKEND_PORT
+              value: "5001"
+          envFrom:
+            - configMapRef:
+                name: ai-orchestrator-config
+            - secretRef:
+                name: ai-orchestrator-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: workspace
+              mountPath: /app/workspace
+            - name: sessions
+              mountPath: /app/sessions
+      volumes:
+        - name: config
+          configMap:
+            name: ai-orchestrator-config
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: ai-orchestrator-workspace-pvc
+        - name: sessions
+          persistentVolumeClaim:
+            claimName: ai-orchestrator-sessions-pvc
