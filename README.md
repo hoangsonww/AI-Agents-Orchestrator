@@ -2,6 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vue.js&logoColor=white)
+![Nuxt](https://img.shields.io/badge/Nuxt-3.x-00C58E?logo=nuxt&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-2.x-000000?logo=flask&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?logo=docker&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-326CE5?logo=kubernetes&logoColor=white)
@@ -21,13 +22,15 @@
 ![Black](https://img.shields.io/badge/Code_Style-Black-000000?logo=python&logoColor=white)
 ![Flake8](https://img.shields.io/badge/Linter-Flake8-4B8BBE?logo=python&logoColor=white)
 ![Bandit](https://img.shields.io/badge/Security-Bandit-FFD43B?logo=python&logoColor=white)
+![NGINX](https://img.shields.io/badge/NGINX-Load_Balancer-009639?logo=nginx&logoColor=white)
+![Microsoft Azure](https://img.shields.io/badge/Microsoft_Azure-Deployment-0089D6?logo=task&logoColor=white)
 ![MIT License](https://img.shields.io/badge/License-MIT-green?logo=opensourceinitiative&logoColor=white)
 
 <div align="center">
 
 **Production-ready orchestration system that coordinates multiple AI coding assistants (Claude, Codex, Gemini, Copilot) to collaborate on software development tasks**
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Architecture](ARCHITECTURE.md) • [Contributing](#-contributing)
+[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Architecture](ARCHITECTURE.md) • [Setup Guide](SETUP.md) • [Feature Docs](FEATURES.md) • [Add New Agents](ADD_AGENTS.md) • [Deployment](DEPLOYMENT.md)
 
 </div>
 
@@ -105,7 +108,7 @@ flowchart TB
 ```
 
 <p align="center">
-  <img src="docs/images/cli.png" alt="CLI Interface" width="600"/>
+  <img src="docs/images/cli.png" alt="CLI Interface" width="100%"/>
 </p>
 
 ## ✨ Features
@@ -131,7 +134,7 @@ flowchart TB
 - 🔄 **CI/CD** - Automated testing and releases via GitHub Actions
 
 <p align="center">
-  <img src="docs/images/interactive.png" alt="Interactive Mode" width="600"/>
+  <img src="docs/images/interactive.png" alt="Interactive Mode" width="100%"/>
 </p>
 
 ## 🚀 Quick Start
@@ -139,7 +142,7 @@ flowchart TB
 ### Prerequisites
 
 - Python 3.8 or higher
-- At least one AI CLI tool installed (Claude Code, Codex, Gemini, or Copilot)
+- At least one AI CLI tool installed (Claude Code, Codex, Gemini, or Copilot), authenticated, and accessible from INSIDE the `venv` where the orchestrator runs (if you run it inside a virtual environment)
 - Node.js 20+ (for Web UI)
 - Docker (optional)
 
@@ -148,7 +151,17 @@ flowchart TB
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd AI-Coding-Tools-Collaborative
+cd AI-Agents-Orchestrator
+
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+# On Linux/macOS:
+source venv/bin/activate
+
+# On Windows:
+venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -205,7 +218,7 @@ Session saved!
 ### Web UI
 
 <p align="center">
-  <img src="docs/images/ui.png" alt="Web UI" width="600"/>
+  <img src="docs/images/ui.png" alt="Web UI" width="100%"/>
 </p>
 
 Start the Web UI for a visual development experience:
@@ -265,7 +278,7 @@ Open http://localhost:3000
 ## 📁 Project Structure
 
 ```
-AI-Coding-Tools-Collaborative/
+AI-Agents-Orchestrator/
 ├── ai-orchestrator           # Main CLI entry point
 ├── orchestrator/             # Core orchestration engine
 │   ├── core.py              # Main orchestrator logic
@@ -406,11 +419,11 @@ pre-commit run --all-files
 - **[FEATURES.md](FEATURES.md)** - Comprehensive feature documentation
 - **[SETUP.md](SETUP.md)** - Installation and setup guide
 - **[ADD_AGENTS.md](ADD_AGENTS.md)** - Guide for adding new AI agents
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment strategies and configurations
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! Please see [CONTRIBUTING.md](.github/CONTRIBUTING.md) for guidelines.
 
 ### Quick Contribution Guide
 
@@ -444,7 +457,7 @@ Built with:
 
 ## 💬 Support
 
-- **Documentation**: [docs/](docs/)
+- **Repo Maintainer**: [@hoangsonww](https://github.com/hoangsonww)
 - **Issues**: [GitHub Issues](https://github.com/your-org/ai-orchestrator/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/your-org/ai-orchestrator/discussions)
 

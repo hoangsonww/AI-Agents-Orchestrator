@@ -1,6 +1,6 @@
 # AI Orchestrator Web UI
 
-Modern Vue 3 web interface for the AI Orchestrator with real-time updates and Monaco code editor.
+Modern Vue 3 + Nuxt web interface for the AI Orchestrator with real-time updates and Monaco code editor.
 
 ## Features
 
@@ -15,12 +15,12 @@ Modern Vue 3 web interface for the AI Orchestrator with real-time updates and Mo
 
 ```
 ┌─────────────────┐         ┌──────────────────┐
-│   Vue 3 Frontend│◄────────┤  Flask Backend   │
-│   (Port 3000)   │   API   │   (Port 5000)    │
+│  Vue 3 Frontend │◄────────┤  Flask Backend   │
+│  (Port 3000)    │   API   │   (Port 5000)    │
 │                 │◄────────┤                  │
-│  - Pinia Store  │ Socket  │  - REST API      │
-│  - Monaco Editor│   IO    │  - WebSocket     │
-│  - Tailwind CSS │         │  - Orchestrator  │
+│ - Pinia Store   │ Socket  │  - REST API      │
+│ - Monaco Editor │   IO    │  - WebSocket     │
+│ - Tailwind CSS  │         │  - Orchestrator  │
 └─────────────────┘         └──────────────────┘
 ```
 

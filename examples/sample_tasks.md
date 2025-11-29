@@ -222,16 +222,16 @@ Task completed successfully! ✓
 ### Agent Availability Check
 
 ```
-╭─────────────────────────────────────────────╮
-│ AI Agents                                   │
-├─────────┬──────────────┬────────────┬───────╯
-│ Agent   │ Status       │ Command    │ Role
-├─────────┼──────────────┼────────────┼─────────
-│ codex   │ ✓ Available  │ codex      │ implementation
-│ gemini  │ ✓ Available  │ gemini-cli │ review
-│ claude  │ ✓ Available  │ claude     │ refinement
-│ copilot │ ○ Disabled   │ gh         │ suggestions
-╰─────────┴──────────────┴────────────┴─────────
+╭──────────────────────────────────────────────────────╮
+│                    AI Agents                         │
+├─────────┬──────────────┬────────────┬────────────────╯
+│ Agent   │ Status       │ Command    │ Role           │
+├─────────┼──────────────┼────────────┼─────────────────
+│ codex   │ ✓ Available  │ codex      │ implementation │
+│ gemini  │ ✓ Available  │ gemini-cli │ review         │
+│ claude  │ ✓ Available  │ claude     │ refinement     │ 
+│ copilot │ ○ Disabled   │ gh         │ suggestions    │
+╰─────────┴──────────────┴────────────┴─────────────────
 ```
 
 ## Tips and Best Practices

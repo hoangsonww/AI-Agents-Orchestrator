@@ -79,5 +79,5 @@ docs/_build/
 # Other
 *.md
 !README.md
-LICENSE
-Makefile
+!LICENSE
+!Makefile

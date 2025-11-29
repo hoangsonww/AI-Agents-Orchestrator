@@ -5,7 +5,6 @@
 - [Overview](#overview)
 - [Architecture Overview](#architecture-overview)
 - [Step-by-Step Guide](#step-by-step-guide)
-- [Adapter Implementation](#adapter-implementation)
 - [Configuration](#configuration)
 - [Testing](#testing)
 - [Advanced Topics](#advanced-topics)
