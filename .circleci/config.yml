@@ -1,0 +1,364 @@
+version: 2.1
+
+orbs:
+  docker: circleci/docker@2.2.0
+  kubernetes: circleci/kubernetes@1.3.1
+  python: circleci/python@2.1.1
+  slack: circleci/slack@4.12.1
+
+executors:
+  python-executor:
+    docker:
+      - image: cimg/python:3.11
+    resource_class: medium
+
+  docker-executor:
+    docker:
+      - image: cimg/base:stable
+    resource_class: medium
+
+commands:
+  install-dependencies:
+    steps:
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "requirements.txt" }}
+            - v1-deps-
+      - run:
+          name: Install Python dependencies
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            pip install pytest pytest-cov black flake8 mypy bandit
+      - save_cache:
+          key: v1-deps-{{ checksum "requirements.txt" }}
+          paths:
+            - venv
+
+  notify-slack-success:
+    steps:
+      - slack/notify:
+          event: pass
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Deployment Successful",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Project*: AI Orchestrator"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch*: ${CIRCLE_BRANCH}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Build*: #${CIRCLE_BUILD_NUM}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit*: ${CIRCLE_SHA1:0:7}"
+                    }
+                  ]
+                }
+              ]
+            }
+
+  notify-slack-failure:
+    steps:
+      - slack/notify:
+          event: fail
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Deployment Failed",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Project*: AI Orchestrator"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch*: ${CIRCLE_BRANCH}"
+                    }
+                  ]
+                }
+              ]
+            }
+
+jobs:
+  lint-and-format:
+    executor: python-executor
+    steps:
+      - checkout
+      - install-dependencies
+      - run:
+          name: Run Black
+          command: |
+            . venv/bin/activate
+            black --check orchestrator adapters tests
+      - run:
+          name: Run Flake8
+          command: |
+            . venv/bin/activate
+            flake8 orchestrator adapters tests
+      - run:
+          name: Run isort
+          command: |
+            . venv/bin/activate
+            pip install isort
+            isort --check-only orchestrator adapters tests
+
+  type-check:
+    executor: python-executor
+    steps:
+      - checkout
+      - install-dependencies
+      - run:
+          name: Run MyPy
+          command: |
+            . venv/bin/activate
+            pip install types-PyYAML types-click
+            mypy orchestrator adapters || true
+
+  security-scan:
+    executor: python-executor
+    steps:
+      - checkout
+      - install-dependencies
+      - run:
+          name: Run Bandit
+          command: |
+            . venv/bin/activate
+            bandit -r orchestrator adapters -f json -o bandit-report.json
+      - run:
+          name: Run Safety
+          command: |
+            . venv/bin/activate
+            pip install safety
+            safety check --json > safety-report.json || true
+      - store_artifacts:
+          path: bandit-report.json
+      - store_artifacts:
+          path: safety-report.json
+
+  test:
+    executor: python-executor
+    steps:
+      - checkout
+      - install-dependencies
+      - run:
+          name: Run Tests
+          command: |
+            . venv/bin/activate
+            pytest tests/ \
+              --cov=orchestrator \
+              --cov=adapters \
+              --cov-report=xml \
+              --cov-report=html \
+              --junitxml=test-results/junit.xml \
+              -v
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: htmlcov
+      - store_artifacts:
+          path: coverage.xml
+
+  build-docker:
+    executor: docker-executor
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.14
+          docker_layer_caching: true
+      - run:
+          name: Build Docker Image
+          command: |
+            docker build \
+              --build-arg VERSION=${CIRCLE_SHA1:0:8} \
+              --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+              --build-arg VCS_REF=$CIRCLE_SHA1 \
+              -t ai-orchestrator:${CIRCLE_SHA1:0:8} \
+              -t ai-orchestrator:latest \
+              .
+      - run:
+          name: Push Docker Image
+          command: |
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            docker push ai-orchestrator:${CIRCLE_SHA1:0:8}
+            docker push ai-orchestrator:latest
+
+  container-security-scan:
+    executor: docker-executor
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Trivy Scan
+          command: |
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:latest image \
+              --severity HIGH,CRITICAL \
+              ai-orchestrator:${CIRCLE_SHA1:0:8}
+
+  deploy-staging:
+    executor: python-executor
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run:
+          name: Deploy to Staging
+          command: |
+            echo $KUBE_CONFIG_STAGING | base64 -d > kubeconfig
+            export KUBECONFIG=kubeconfig
+            kubectl config use-context staging
+            kubectl set image deployment/ai-orchestrator-blue \
+              ai-orchestrator=ai-orchestrator:${CIRCLE_SHA1:0:8} \
+              -n ai-orchestrator
+            kubectl rollout status deployment/ai-orchestrator-blue \
+              -n ai-orchestrator --timeout=5m
+      - notify-slack-success
+
+  deploy-production-green:
+    executor: python-executor
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run:
+          name: Deploy to Production Green
+          command: |
+            echo $KUBE_CONFIG_PROD | base64 -d > kubeconfig
+            export KUBECONFIG=kubeconfig
+            kubectl config use-context production
+            kubectl set image deployment/ai-orchestrator-green \
+              ai-orchestrator=ai-orchestrator:${CIRCLE_SHA1:0:8} \
+              -n ai-orchestrator
+            kubectl scale deployment/ai-orchestrator-green --replicas=3 -n ai-orchestrator
+            kubectl rollout status deployment/ai-orchestrator-green \
+              -n ai-orchestrator --timeout=5m
+
+  switch-production-traffic:
+    executor: python-executor
+    steps:
+      - checkout
+      - kubernetes/install-kubectl
+      - run:
+          name: Switch Production Traffic
+          command: |
+            echo $KUBE_CONFIG_PROD | base64 -d > kubeconfig
+            export KUBECONFIG=kubeconfig
+            kubectl config use-context production
+            kubectl patch service ai-orchestrator-service \
+              -n ai-orchestrator \
+              -p '{"spec":{"selector":{"version":"green"}}}'
+            echo "Traffic switched to green"
+            sleep 30
+            kubectl scale deployment/ai-orchestrator-blue --replicas=0 -n ai-orchestrator
+      - notify-slack-success
+
+  smoke-tests:
+    executor: python-executor
+    steps:
+      - checkout
+      - run:
+          name: Run Smoke Tests
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install requests pytest
+            python scripts/smoke_tests.py --environment production
+
+workflows:
+  version: 2
+
+  # Main workflow for all branches
+  build-and-test:
+    jobs:
+      - lint-and-format
+      - type-check
+      - security-scan
+      - test:
+          requires:
+            - lint-and-format
+
+      - build-docker:
+          requires:
+            - test
+          filters:
+            branches:
+              only:
+                - main
+                - develop
+
+      - container-security-scan:
+          requires:
+            - build-docker
+
+      # Staging deployment (automatic on develop)
+      - deploy-staging:
+          requires:
+            - container-security-scan
+          filters:
+            branches:
+              only: develop
+
+      # Production deployment (manual approval)
+      - hold-for-approval:
+          type: approval
+          requires:
+            - container-security-scan
+          filters:
+            branches:
+              only: main
+
+      - deploy-production-green:
+          requires:
+            - hold-for-approval
+          filters:
+            branches:
+              only: main
+
+      - hold-for-traffic-switch:
+          type: approval
+          requires:
+            - deploy-production-green
+          filters:
+            branches:
+              only: main
+
+      - switch-production-traffic:
+          requires:
+            - hold-for-traffic-switch
+          filters:
+            branches:
+              only: main
+
+      - smoke-tests:
+          requires:
+            - switch-production-traffic
+          filters:
+            branches:
+              only: main

@@ -1,0 +1,228 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestrator-stable
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    track: stable
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-orchestrator
+    track: stable
+  ports:
+    - name: http
+      port: 5001
+      targetPort: 5001
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestrator-canary
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    track: canary
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-orchestrator
+    track: canary
+  ports:
+    - name: http
+      port: 5001
+      targetPort: 5001
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-orchestrator-stable
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    track: stable
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: ai-orchestrator
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: ai-orchestrator
+        track: stable
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      containers:
+        - name: ai-orchestrator
+          image: ai-orchestrator:stable
+          ports:
+            - containerPort: 5001
+            - containerPort: 9090
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: TRACK
+              value: "stable"
+          envFrom:
+            - configMapRef:
+                name: ai-orchestrator-config
+            - secretRef:
+                name: ai-orchestrator-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 5
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-orchestrator-canary
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    track: canary
+spec:
+  replicas: 1  # Start with 10% of stable traffic
+  selector:
+    matchLabels:
+      app: ai-orchestrator
+      track: canary
+  template:
+    metadata:
+      labels:
+        app: ai-orchestrator
+        track: canary
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      containers:
+        - name: ai-orchestrator
+          image: ai-orchestrator:canary
+          ports:
+            - containerPort: 5001
+            - containerPort: 9090
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: TRACK
+              value: "canary"
+          envFrom:
+            - configMapRef:
+                name: ai-orchestrator-config
+            - secretRef:
+                name: ai-orchestrator-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 5
+
+---
+# Istio VirtualService for traffic splitting
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ai-orchestrator-virtualservice
+  namespace: ai-orchestrator
+spec:
+  hosts:
+    - ai-orchestrator.example.com
+  http:
+    - match:
+        - headers:
+            canary:
+              exact: "true"
+      route:
+        - destination:
+            host: ai-orchestrator-canary
+            port:
+              number: 5001
+    - route:
+        - destination:
+            host: ai-orchestrator-stable
+            port:
+              number: 5001
+          weight: 90
+        - destination:
+            host: ai-orchestrator-canary
+            port:
+              number: 5001
+          weight: 10
+
+---
+# Flagger Canary resource for progressive delivery
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: ai-orchestrator
+  namespace: ai-orchestrator
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-orchestrator-stable
+  progressDeadlineSeconds: 600
+  service:
+    port: 5001
+    targetPort: 5001
+  analysis:
+    interval: 1m
+    threshold: 5
+    maxWeight: 50
+    stepWeight: 10
+    metrics:
+      - name: request-success-rate
+        thresholdRange:
+          min: 99
+        interval: 1m
+      - name: request-duration
+        thresholdRange:
+          max: 500
+        interval: 1m
+    webhooks:
+      - name: load-test
+        url: http://flagger-loadtester/
+        timeout: 5s
+        metadata:
+          cmd: "hey -z 1m -q 10 -c 2 http://ai-orchestrator-canary.ai-orchestrator:5001/"

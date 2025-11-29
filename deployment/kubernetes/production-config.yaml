@@ -1,0 +1,206 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-orchestrator-config
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    environment: production
+data:
+  # Application Configuration
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"
+  PORT: "5001"
+  WORKERS: "4"
+
+  # Feature Flags
+  ENABLE_METRICS: "true"
+  ENABLE_TRACING: "true"
+  ENABLE_DEBUG: "false"
+
+  # Timeouts (seconds)
+  REQUEST_TIMEOUT: "300"
+  TASK_TIMEOUT: "600"
+  SESSION_TIMEOUT: "3600"
+
+  # Rate Limiting
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_PER_MINUTE: "100"
+  RATE_LIMIT_PER_HOUR: "1000"
+
+  # Cache Configuration
+  CACHE_ENABLED: "true"
+  CACHE_TTL: "300"
+  CACHE_MAX_SIZE: "1000"
+
+  # Database Configuration (if using)
+  DB_POOL_SIZE: "20"
+  DB_POOL_TIMEOUT: "30"
+  DB_MAX_OVERFLOW: "10"
+
+  # Session Configuration
+  SESSION_TYPE: "filesystem"
+  SESSION_FILE_DIR: "/app/sessions"
+  SESSION_PERMANENT: "false"
+
+  # Security
+  SECURE_COOKIES: "true"
+  CSRF_ENABLED: "true"
+  CONTENT_SECURITY_POLICY: "default-src 'self'"
+
+  # Monitoring
+  METRICS_PORT: "9090"
+  METRICS_PATH: "/metrics"
+  HEALTH_CHECK_PATH: "/health"
+  READINESS_CHECK_PATH: "/ready"
+
+  # Application Settings
+  MAX_UPLOAD_SIZE: "10485760"  # 10MB
+  MAX_CONCURRENT_TASKS: "10"
+  RETRY_MAX_ATTEMPTS: "3"
+  RETRY_BACKOFF_FACTOR: "2"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-orchestrator-nginx-config
+  namespace: ai-orchestrator
+  labels:
+    app: ai-orchestrator
+    component: nginx
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log warn;
+    pid /var/run/nginx.pid;
+
+    events {
+      worker_connections 1024;
+      use epoll;
+      multi_accept on;
+    }
+
+    http {
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+
+      log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+      access_log /var/log/nginx/access.log main;
+
+      sendfile on;
+      tcp_nopush on;
+      tcp_nodelay on;
+      keepalive_timeout 65;
+      types_hash_max_size 2048;
+      client_max_body_size 10M;
+
+      # Gzip compression
+      gzip on;
+      gzip_vary on;
+      gzip_proxied any;
+      gzip_comp_level 6;
+      gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/rss+xml font/truetype font/opentype application/vnd.ms-fontobject image/svg+xml;
+
+      # Rate limiting
+      limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+      limit_req_zone $binary_remote_addr zone=general_limit:10m rate=100r/s;
+
+      # Security headers
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "no-referrer-when-downgrade" always;
+      add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+
+      upstream backend {
+        least_conn;
+        server localhost:5001 max_fails=3 fail_timeout=30s;
+        keepalive 32;
+      }
+
+      server {
+        listen 8080 default_server;
+        server_name _;
+
+        # Health check endpoint
+        location /health {
+          access_log off;
+          proxy_pass http://backend/health;
+          proxy_http_version 1.1;
+          proxy_set_header Connection "";
+        }
+
+        # Readiness check endpoint
+        location /ready {
+          access_log off;
+          proxy_pass http://backend/ready;
+          proxy_http_version 1.1;
+          proxy_set_header Connection "";
+        }
+
+        # Metrics endpoint (restrict access)
+        location /metrics {
+          limit_req zone=api_limit burst=5;
+          proxy_pass http://backend/metrics;
+          proxy_http_version 1.1;
+          proxy_set_header Connection "";
+        }
+
+        # API endpoints
+        location /api/ {
+          limit_req zone=api_limit burst=20;
+          proxy_pass http://backend;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_read_timeout 300s;
+          proxy_connect_timeout 75s;
+        }
+
+        # WebSocket endpoint
+        location /socket.io/ {
+          limit_req zone=general_limit burst=50;
+          proxy_pass http://backend;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_read_timeout 3600s;
+          proxy_connect_timeout 75s;
+          proxy_send_timeout 3600s;
+        }
+
+        # Static files
+        location /static/ {
+          limit_req zone=general_limit burst=100;
+          proxy_pass http://backend;
+          proxy_cache_valid 200 1h;
+          expires 1h;
+          add_header Cache-Control "public, immutable";
+        }
+
+        # Root
+        location / {
+          limit_req zone=general_limit burst=50;
+          proxy_pass http://backend;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+      }
+    }

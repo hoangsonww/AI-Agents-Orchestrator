@@ -1,0 +1,251 @@
+stages:
+  - test
+  - build
+  - deploy
+  - verify
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+  IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+  KUBE_NAMESPACE: ai-orchestrator
+
+# Caching for faster builds
+cache:
+  paths:
+    - .venv/
+    - node_modules/
+
+# Before script for all jobs
+before_script:
+  - echo "Starting job $CI_JOB_NAME"
+  - export
+
+# Code quality checks
+lint:
+  stage: test
+  image: python:3.11
+  script:
+    - pip install black flake8 isort
+    - black --check orchestrator adapters tests
+    - flake8 orchestrator adapters tests
+    - isort --check-only orchestrator adapters tests
+  only:
+    - merge_requests
+    - main
+    - develop
+
+typecheck:
+  stage: test
+  image: python:3.11
+  script:
+    - pip install mypy types-PyYAML types-click
+    - mypy orchestrator adapters
+  only:
+    - merge_requests
+    - main
+    - develop
+  allow_failure: true
+
+security-scan:
+  stage: test
+  image: python:3.11
+  script:
+    - pip install bandit safety
+    - bandit -r orchestrator adapters -f json -o bandit-report.json
+    - safety check --json > safety-report.json || true
+  artifacts:
+    reports:
+      sast: bandit-report.json
+    paths:
+      - bandit-report.json
+      - safety-report.json
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Unit tests
+test:
+  stage: test
+  image: python:3.11
+  services:
+    - redis:7
+  variables:
+    REDIS_HOST: redis
+  script:
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov pytest-asyncio pytest-mock
+    - pytest tests/ --cov=orchestrator --cov=adapters --cov-report=xml --cov-report=html --junitxml=junit.xml -v
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      junit: junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - htmlcov/
+      - coverage.xml
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Build Docker image
+build:
+  stage: build
+  image: docker:20.10
+  services:
+    - docker:20.10-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - |
+      docker build \
+        --build-arg VERSION=$CI_COMMIT_SHORT_SHA \
+        --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+        --build-arg VCS_REF=$CI_COMMIT_SHA \
+        --cache-from $IMAGE_LATEST \
+        -t $IMAGE_TAG \
+        -t $IMAGE_LATEST \
+        .
+    - docker push $IMAGE_TAG
+    - docker push $IMAGE_LATEST
+  only:
+    - main
+    - develop
+  dependencies:
+    - test
+
+# Container security scan
+container-scan:
+  stage: build
+  image: aquasec/trivy:latest
+  script:
+    - trivy image --severity HIGH,CRITICAL --no-progress $IMAGE_TAG
+  needs:
+    - build
+  only:
+    - main
+    - develop
+  allow_failure: true
+
+# Deploy to staging
+deploy-staging:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: staging
+    url: https://staging.ai-orchestrator.example.com
+  before_script:
+    - mkdir -p ~/.kube
+    - echo "$KUBE_CONFIG_STAGING" | base64 -d > ~/.kube/config
+  script:
+    - kubectl config use-context staging
+    - |
+      kubectl set image deployment/ai-orchestrator-blue \
+        ai-orchestrator=$IMAGE_TAG \
+        -n $KUBE_NAMESPACE
+    - kubectl rollout status deployment/ai-orchestrator-blue -n $KUBE_NAMESPACE --timeout=5m
+    - echo "Deployed to staging successfully"
+  only:
+    - develop
+  needs:
+    - build
+    - test
+
+# Deploy to production (Blue-Green)
+deploy-production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: production
+    url: https://ai-orchestrator.example.com
+  before_script:
+    - mkdir -p ~/.kube
+    - echo "$KUBE_CONFIG_PROD" | base64 -d > ~/.kube/config
+  script:
+    # Deploy to green environment
+    - kubectl config use-context production
+    - |
+      kubectl set image deployment/ai-orchestrator-green \
+        ai-orchestrator=$IMAGE_TAG \
+        -n $KUBE_NAMESPACE
+    - kubectl scale deployment/ai-orchestrator-green --replicas=3 -n $KUBE_NAMESPACE
+    - kubectl rollout status deployment/ai-orchestrator-green -n $KUBE_NAMESPACE --timeout=5m
+    - echo "Green environment deployed successfully"
+  only:
+    - main
+  needs:
+    - build
+    - test
+  when: manual
+
+# Switch production traffic
+switch-production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: production
+    url: https://ai-orchestrator.example.com
+  before_script:
+    - mkdir -p ~/.kube
+    - echo "$KUBE_CONFIG_PROD" | base64 -d > ~/.kube/config
+  script:
+    - kubectl config use-context production
+    # Switch service to green
+    - |
+      kubectl patch service ai-orchestrator-service \
+        -n $KUBE_NAMESPACE \
+        -p '{"spec":{"selector":{"version":"green"}}}'
+    - echo "Traffic switched to green environment"
+    - sleep 30
+    # Scale down blue
+    - kubectl scale deployment/ai-orchestrator-blue --replicas=0 -n $KUBE_NAMESPACE
+    - echo "Blue environment scaled down"
+  only:
+    - main
+  needs:
+    - deploy-production
+  when: manual
+
+# Smoke tests
+smoke-tests:
+  stage: verify
+  image: python:3.11
+  script:
+    - pip install requests pytest
+    - python scripts/smoke_tests.py --environment production
+  only:
+    - main
+  needs:
+    - switch-production
+  allow_failure: true
+
+# Rollback job (manual trigger)
+rollback-production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: production
+    url: https://ai-orchestrator.example.com
+  before_script:
+    - mkdir -p ~/.kube
+    - echo "$KUBE_CONFIG_PROD" | base64 -d > ~/.kube/config
+  script:
+    - kubectl config use-context production
+    # Switch back to blue
+    - |
+      kubectl patch service ai-orchestrator-service \
+        -n $KUBE_NAMESPACE \
+        -p '{"spec":{"selector":{"version":"blue"}}}'
+    - kubectl scale deployment/ai-orchestrator-blue --replicas=3 -n $KUBE_NAMESPACE
+    - kubectl rollout status deployment/ai-orchestrator-blue -n $KUBE_NAMESPACE
+    - echo "Rolled back to blue environment"
+  only:
+    - main
+  when: manual
