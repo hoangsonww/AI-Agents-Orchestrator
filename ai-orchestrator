@@ -16,6 +16,38 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 import yaml
+import subprocess
+
+# Setup Node.js environment before anything else
+def setup_node_environment():
+    """Ensure Node.js v20 is being used."""
+    import glob
+    nvm_dir = os.path.expanduser('~/.nvm')
+    if os.path.exists(nvm_dir):
+        # Find the latest v20 node installation
+        node_versions_dir = os.path.join(nvm_dir, 'versions', 'node')
+        if os.path.exists(node_versions_dir):
+            # Look for any v20.x.x version
+            v20_dirs = glob.glob(os.path.join(node_versions_dir, 'v20.*'))
+            if v20_dirs:
+                # Use the latest v20 found
+                node_v20_path = os.path.join(sorted(v20_dirs)[-1], 'bin')
+                if os.path.exists(node_v20_path):
+                    # Prepend to PATH to ensure it takes precedence
+                    current_path = os.environ.get('PATH', '')
+                    os.environ['PATH'] = f"{node_v20_path}:{current_path}"
+                    return True
+    return False
+
+# Setup Node environment
+if setup_node_environment():
+    # Verify the setup
+    try:
+        node_version = subprocess.check_output(['node', '--version'], text=True, stderr=subprocess.DEVNULL).strip()
+        if not node_version.startswith('v20'):
+            print(f"Warning: Node.js v20 not active. Current version: {node_version}", file=sys.stderr)
+    except Exception:
+        pass
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -162,10 +194,28 @@ def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents
                 if step.get('suggestions'):
                     console.print(f"     Suggestions: {len(step['suggestions'])}")
 
-        # Show final output
+        # Show final output (full output, not truncated)
         if results.get('final_output'):
             console.print("\n[bold]Final Output:[/bold]")
-            console.print(Panel(results['final_output'][:500] + "..." if len(results['final_output']) > 500 else results['final_output']))
+            output = results['final_output']
+            # Display full output
+            console.print(Panel(output, border_style="green"))
+
+        # Show generated files
+        files_created = []
+        for iteration in results.get('iterations', []):
+            for step in iteration.get('steps', []):
+                if step.get('files_modified'):
+                    files_created.extend(step['files_modified'])
+
+        if files_created:
+            console.print("\n[bold]Files Created/Modified:[/bold]")
+            for file_path in files_created:
+                console.print(f"  📄 [cyan]{file_path}[/cyan]")
+
+            # Show workspace location
+            workspace = output or './workspace'
+            console.print(f"\n[dim]Workspace: {workspace}[/dim]")
 
         # Show success status
         if results.get('success'):

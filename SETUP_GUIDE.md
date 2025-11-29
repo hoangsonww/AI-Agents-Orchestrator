@@ -189,16 +189,12 @@ Once you have at least one tool installed:
 ```
 
 You should see:
-```
-                         AI Agents
-┏━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
-┃ Agent   ┃ Status          ┃ Command    ┃ Role           ┃
-┡━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
-│ claude  │ ✓ Available     │ claude     │ refinement     │
-│ codex   │ ✓ Available     │ codex      │ implementation │
-│ gemini  │ ✓ Available     │ gemini     │ review         │
-└─────────┴─────────────────┴────────────┴────────────────┘
-```
+
+| Agent  | Status      | Command | Role           |
+|--------|-------------|---------|----------------|
+| claude | ✓ Available | claude  | refinement     |
+| codex  | ✓ Available | codex   | implementation |
+| gemini | ✓ Available | gemini  | review         |
 
 ### 2. Test with a simple task
 

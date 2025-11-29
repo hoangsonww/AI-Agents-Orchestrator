@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Orchestrator - Collaborative AI Development</title>
+
+    <!-- Monaco Editor -->
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.min.css">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <style>
+        .code-editor {
+            height: 600px;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+        }
+        .sidebar {
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+        }
+        .main-content {
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-idle {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        .status-running {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        .status-completed {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .status-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-full px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-gray-900">🤖 AI Orchestrator</h1>
+                    <span class="text-sm text-gray-500">Collaborative AI Development</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="status-badge" class="status-badge status-idle">Idle</span>
+                    <button id="clear-btn" class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex max-w-full">
+        <!-- Sidebar -->
+        <aside class="sidebar w-80 bg-white shadow-sm p-6">
+            <div class="space-y-6">
+                <!-- Task Input -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Task Description</label>
+                    <textarea
+                        id="task-input"
+                        rows="4"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Describe what you want to build..."
+                    ></textarea>
+                </div>
+
+                <!-- Workflow Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Workflow</label>
+                    <select id="workflow-select" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="default">Default (Codex → Gemini → Claude)</option>
+                        <option value="quick">Quick (Codex only)</option>
+                        <option value="thorough">Thorough (Multi-review)</option>
+                        <option value="review-only">Review Only</option>
+                        <option value="document">Documentation</option>
+                    </select>
+                </div>
+
+                <!-- Max Iterations -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Max Iterations</label>
+                    <input
+                        type="number"
+                        id="max-iterations"
+                        value="3"
+                        min="1"
+                        max="10"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
+                <!-- Execute Button -->
+                <button
+                    id="execute-btn"
+                    class="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                    Execute Task
+                </button>
+
+                <!-- Agents Status -->
+                <div class="pt-6 border-t border-gray-200">
+                    <h3 class="text-sm font-medium text-gray-700 mb-3">Agents Status</h3>
+                    <div id="agents-list" class="space-y-2">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+
+                <!-- Files Created -->
+                <div id="files-section" class="hidden pt-6 border-t border-gray-200">
+                    <h3 class="text-sm font-medium text-gray-700 mb-3">Generated Files</h3>
+                    <div id="files-list" class="space-y-1">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content flex-1 p-6">
+            <!-- Tabs -->
+            <div class="mb-4">
+                <nav class="flex space-x-4 border-b border-gray-200">
+                    <button class="tab-btn active px-4 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600" data-tab="output">
+                        Output
+                    </button>
+                    <button class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700" data-tab="editor">
+                        Code Editor
+                    </button>
+                    <button class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700" data-tab="iterations">
+                        Iterations
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Output Tab -->
+            <div id="output-tab" class="tab-content">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div id="output-content" class="prose max-w-none">
+                        <p class="text-gray-500 italic">Output will appear here after task execution...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editor Tab -->
+            <div id="editor-tab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div>
+                            <span id="current-file" class="text-sm font-medium text-gray-700">No file selected</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="save-file-btn" class="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400">
+                                Save
+                            </button>
+                            <button id="download-file-btn" class="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400">
+                                Download
+                            </button>
+                        </div>
+                    </div>
+                    <div id="monaco-editor" class="code-editor"></div>
+                </div>
+            </div>
+
+            <!-- Iterations Tab -->
+            <div id="iterations-tab" class="tab-content hidden">
+                <div class="space-y-4">
+                    <div id="iterations-content">
+                        <p class="text-gray-500 italic">Iteration details will appear here...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="progress-section" class="hidden mt-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Progress</h3>
+                    <div id="progress-steps" class="space-y-3">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+
+    <script>
+        // Monaco Editor Setup
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+
+        let editor;
+        let socket;
+        let currentFile = null;
+
+        // Initialize Monaco Editor
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: '// Code will appear here...',
+                language: 'python',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: true },
+                fontSize: 14,
+                lineNumbers: 'on',
+                renderWhitespace: 'selection',
+                scrollBeyondLastLine: false
+            });
+        });
+
+        // Socket.IO Connection
+        socket = io();
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            updateStatusBadge('idle');
+        });
+
+        socket.on('task_started', (data) => {
+            console.log('Task started:', data);
+            updateStatusBadge('running');
+            document.getElementById('progress-section').classList.remove('hidden');
+            document.getElementById('execute-btn').disabled = true;
+        });
+
+        socket.on('task_completed', (data) => {
+            console.log('Task completed:', data);
+            updateStatusBadge('completed');
+            document.getElementById('execute-btn').disabled = false;
+
+            // Update output
+            displayOutput(data.output);
+
+            // Update files
+            displayFiles(data.files);
+
+            // Update iterations
+            displayIterations(data.iterations);
+        });
+
+        socket.on('task_error', (data) => {
+            console.error('Task error:', data);
+            updateStatusBadge('error');
+            document.getElementById('execute-btn').disabled = false;
+            alert('Error: ' + data.error);
+        });
+
+        // Load agents on startup
+        fetch('/api/agents')
+            .then(res => res.json())
+            .then(data => {
+                displayAgents(data.agents);
+            });
+
+        // Execute button handler
+        document.getElementById('execute-btn').addEventListener('click', () => {
+            const task = document.getElementById('task-input').value.trim();
+            if (!task) {
+                alert('Please enter a task description');
+                return;
+            }
+
+            const workflow = document.getElementById('workflow-select').value;
+            const maxIterations = parseInt(document.getElementById('max-iterations').value);
+
+            fetch('/api/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task, workflow, max_iterations: maxIterations })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Task submitted:', data);
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Failed to execute task');
+            });
+        });
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+
+                // Update buttons
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active', 'border-blue-600', 'text-blue-600');
+                    b.classList.add('border-transparent', 'text-gray-500');
+                });
+                btn.classList.add('active', 'border-blue-600', 'text-blue-600');
+
+                // Update content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                document.getElementById(`${tab}-tab`).classList.remove('hidden');
+            });
+        });
+
+        // Helper functions
+        function updateStatusBadge(status) {
+            const badge = document.getElementById('status-badge');
+            badge.className = 'status-badge status-' + status;
+            badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+        }
+
+        function displayOutput(output) {
+            const content = document.getElementById('output-content');
+            content.innerHTML = `<pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto">${escapeHtml(output)}</pre>`;
+        }
+
+        function displayFiles(files) {
+            if (!files || files.length === 0) return;
+
+            const section = document.getElementById('files-section');
+            const list = document.getElementById('files-list');
+
+            section.classList.remove('hidden');
+            list.innerHTML = files.map(file => `
+                <button class="file-item w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md" data-file="${file}">
+                    📄 ${file}
+                </button>
+            `).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.addEventListener('click', () => loadFile(item.dataset.file));
+            });
+        }
+
+        function displayAgents(agents) {
+            const list = document.getElementById('agents-list');
+            list.innerHTML = agents.map(agent => `
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-700">${agent.name}</span>
+                    <span class="${agent.available ? 'text-green-600' : 'text-gray-400'}">
+                        ${agent.available ? '✓' : '○'}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function displayIterations(iterations) {
+            const content = document.getElementById('iterations-content');
+            if (!iterations || iterations.length === 0) return;
+
+            content.innerHTML = iterations.map((iter, i) => `
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                    <h4 class="font-medium text-gray-900 mb-3">Iteration ${i + 1}</h4>
+                    <div class="space-y-2">
+                        ${iter.steps.map(step => `
+                            <div class="flex items-start space-x-2">
+                                <span class="${step.success ? 'text-green-600' : 'text-red-600'}">
+                                    ${step.success ? '✓' : '✗'}
+                                </span>
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium">${step.agent} - ${step.task}</div>
+                                    ${step.suggestions ? `<div class="text-xs text-gray-500">${step.suggestions.length} suggestions</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadFile(filename) {
+            fetch(`/api/files/${filename}`)
+                .then(res => res.json())
+                .then(data => {
+                    currentFile = filename;
+                    document.getElementById('current-file').textContent = filename;
+                    editor.setValue(data.content);
+                    monaco.editor.setModelLanguage(editor.getModel(), data.language);
+
+                    // Switch to editor tab
+                    document.querySelector('[data-tab="editor"]').click();
+                })
+                .catch(err => {
+                    console.error('Error loading file:', err);
+                    alert('Failed to load file');
+                });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Download file handler
+        document.getElementById('download-file-btn').addEventListener('click', () => {
+            if (!currentFile) return;
+            const content = editor.getValue();
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFile.split('/').pop();
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Clear button handler
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            document.getElementById('task-input').value = '';
+            document.getElementById('output-content').innerHTML = '<p class="text-gray-500 italic">Output will appear here after task execution...</p>';
+            document.getElementById('files-section').classList.add('hidden');
+            document.getElementById('progress-section').classList.add('hidden');
+            editor.setValue('// Code will appear here...');
+            currentFile = null;
+            document.getElementById('current-file').textContent = 'No file selected';
+        });
+    </script>
+</body>
+</html>

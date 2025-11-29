@@ -6,53 +6,51 @@ The AI Coding Tools Collaborative system orchestrates multiple AI coding assista
 
 ## System Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│         AI Orchestrator CLI                 │
-│  - Command-line interface                   │
-│  - User input handling                      │
-│  - Output formatting and display            │
-└────────────────┬────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────┐
-│         Orchestrator Core                   │
-│  - Workflow management                      │
-│  - Agent coordination                       │
-│  - Iteration control                        │
-│  - Configuration management                 │
-└────────────────┬────────────────────────────┘
-                 │
-        ┌────────┴────────┐
-        │  Workflow Engine │
-        │  - Step execution│
-        │  - Progress track│
-        └────────┬─────────┘
-                 │
-    ┌────────────┼────────────┬────────────┐
-    │            │            │            │
-    ▼            ▼            ▼            ▼
-┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
-│ Codex  │  │ Gemini │  │ Claude │  │Copilot │
-│Adapter │  │Adapter │  │Adapter │  │Adapter │
-└────┬───┘  └────┬───┘  └────┬───┘  └────┬───┘
-     │           │           │           │
-     └─────┬─────┴─────┬─────┴─────┬─────┘
-           │           │           │
-           ▼           ▼           ▼
-   ┌───────────────────────────────────┐
-   │    CLI Communicator               │
-   │  - Multiple communication methods │
-   │  - Workspace file tracking        │
-   │  - Error handling & retries       │
-   └────────────┬──────────────────────┘
-                │
-       ┌────────┼────────┬────────┐
-       ▼        ▼        ▼        ▼
-   ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐
-   │Codex │ │Gemini│ │Claude│ │Copilot│
-   │ CLI  │ │ CLI  │ │ Code │ │ CLI  │
-   └──────┘ └──────┘ └──────┘ └──────┘
+```mermaid
+graph TD
+    CLI[AI Orchestrator CLI<br/>- Command-line interface<br/>- User input handling<br/>- Output formatting and display]
+    
+    Core[Orchestrator Core<br/>- Workflow management<br/>- Agent coordination<br/>- Iteration control<br/>- Configuration management]
+    
+    WE[Workflow Engine<br/>- Step execution<br/>- Progress tracking]
+    
+    CA[Codex Adapter]
+    GA[Gemini Adapter]
+    CLA[Claude Adapter]
+    CPA[Copilot Adapter]
+    
+    CLIC[CLI Communicator<br/>- Multiple communication methods<br/>- Workspace file tracking<br/>- Error handling & retries]
+    
+    CODEX[Codex CLI]
+    GEM[Gemini CLI]
+    CLAU[Claude Code]
+    COP[Copilot CLI]
+    
+    CLI --> Core
+    Core --> WE
+    WE --> CA
+    WE --> GA
+    WE --> CLA
+    WE --> CPA
+    
+    CA --> CLIC
+    GA --> CLIC
+    CLA --> CLIC
+    CPA --> CLIC
+    
+    CLIC --> CODEX
+    CLIC --> GEM
+    CLIC --> CLAU
+    CLIC --> COP
+    
+    style CLI fill:#e1f5ff
+    style Core fill:#fff4e6
+    style WE fill:#e8f5e9
+    style CA fill:#f3e5f5
+    style GA fill:#f3e5f5
+    style CLA fill:#f3e5f5
+    style CPA fill:#f3e5f5
+    style CLIC fill:#fce4ec
 ```
 
 ## Core Components
@@ -146,38 +144,59 @@ The AI Coding Tools Collaborative system orchestrates multiple AI coding assista
 
 ### 1. Task Submission
 
-```
-User Input → CLI Parser → Orchestrator
+```mermaid
+graph LR
+    A[User Input] --> B[CLI Parser]
+    B --> C[Orchestrator]
+    
+    style A fill:#e1f5ff
+    style B fill:#fff4e6
+    style C fill:#f3e5f5
 ```
 
 ### 2. Workflow Execution
 
-```
-Orchestrator → Workflow Engine → Adapter → CLI Tool
-                     ↓
-                  Context
-                     ↓
-              Next Iteration?
-                     ↓
-                  Results
+```mermaid
+graph LR
+    A[Orchestrator] --> B[Workflow Engine]
+    B --> C[Adapter]
+    C --> D[CLI Tool]
+    B --> E[Context]
+    E --> F{Next Iteration?}
+    F -->|Yes| B
+    F -->|No| G[Results]
+    
+    style A fill:#e1f5ff
+    style B fill:#fff4e6
+    style C fill:#f3e5f5
+    style D fill:#e8f5e9
+    style E fill:#fce4ec
+    style G fill:#c8e6c9
 ```
 
 ### 3. Iteration Loop
 
-```
-Iteration 1:
-  Codex implements → Code files created
-         ↓
-  Gemini reviews → Feedback generated
-         ↓
-  Claude refines → Improved code
-         ↓
-  Check feedback quantity
-         ↓
-  If significant feedback exists:
-    → Iteration 2 (repeat)
-  Else:
-    → Complete
+```mermaid
+graph TD
+    A[Iteration 1: Start] --> B[Codex implements]
+    B --> C[Code files created]
+    C --> D[Gemini reviews]
+    D --> E[Feedback generated]
+    E --> F[Claude refines]
+    F --> G[Improved code]
+    G --> H{Check feedback quantity}
+    H -->|Significant feedback| I[Iteration 2]
+    I --> B
+    H -->|Minimal feedback| J[Complete]
+    
+    style A fill:#e1f5ff
+    style B fill:#fff4e6
+    style C fill:#c8e6c9
+    style D fill:#fff4e6
+    style E fill:#fce4ec
+    style F fill:#fff4e6
+    style G fill:#c8e6c9
+    style J fill:#a5d6a7
 ```
 
 ## Configuration System

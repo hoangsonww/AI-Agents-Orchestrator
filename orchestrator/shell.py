@@ -85,8 +85,9 @@ class InteractiveShell:
         self.orchestrator = Orchestrator(config_path)
         self.history = ConversationHistory()
         self.running = True
-        self.session_dir = Path.home() / '.ai-orchestrator' / 'sessions'
-        self.session_dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialize session directory with robust error handling
+        self.session_dir = self._init_session_dir()
 
         # Setup readline for better UX
         self._setup_readline()
@@ -107,27 +108,100 @@ class InteractiveShell:
             '/context': self.cmd_show_context,
             '/reset': self.cmd_reset,
             '/info': self.cmd_info,
+            '/followup': self.cmd_followup,
         }
 
-    def _setup_readline(self):
-        """Setup readline for command history and completion."""
-        # History file
-        history_file = self.session_dir / 'history.txt'
+    def _init_session_dir(self) -> Path:
+        """Initialize session directory with robust error handling."""
         try:
-            readline.read_history_file(str(history_file))
-        except FileNotFoundError:
-            pass
+            session_dir = Path.home() / '.ai-orchestrator' / 'sessions'
 
-        # Save history on exit
-        import atexit
-        atexit.register(readline.write_history_file, str(history_file))
+            # Check if path exists and handle conflicts
+            if session_dir.exists():
+                if not session_dir.is_dir():
+                    # Path exists but is a file, not a directory
+                    # Backup the file and create directory
+                    backup = session_dir.parent / f'{session_dir.name}.backup'
+                    session_dir.rename(backup)
+                    self.console.print(f"[yellow]Warning: Moved file to {backup}[/yellow]")
+                    session_dir.mkdir(parents=True, exist_ok=True)
+            else:
+                # Create directory
+                session_dir.mkdir(parents=True, exist_ok=True)
 
-        # Tab completion
-        readline.parse_and_bind('tab: complete')
-        readline.set_completer(self._completer)
+            # Verify we can write to the directory
+            test_file = session_dir / '.test'
+            try:
+                test_file.touch(exist_ok=True)
+                test_file.unlink()
+            except (OSError, PermissionError) as e:
+                self.console.print(f"[red]Warning: Cannot write to {session_dir}: {e}[/red]")
+                # Fallback to temp directory
+                import tempfile
+                session_dir = Path(tempfile.gettempdir()) / 'ai-orchestrator-sessions'
+                session_dir.mkdir(parents=True, exist_ok=True)
+                self.console.print(f"[yellow]Using temporary directory: {session_dir}[/yellow]")
 
-        # Vi or Emacs mode
-        readline.parse_and_bind('set editing-mode emacs')
+            return session_dir
+
+        except Exception as e:
+            self.console.print(f"[red]Error initializing session directory: {e}[/red]")
+            # Ultimate fallback to current directory
+            fallback = Path.cwd() / '.sessions'
+            fallback.mkdir(exist_ok=True)
+            return fallback
+
+    def _setup_readline(self):
+        """Setup readline for command history and completion with robust error handling."""
+        try:
+            # History file
+            history_file = self.session_dir / 'history.txt'
+
+            # Ensure history file exists and is writable
+            try:
+                if history_file.exists() and not history_file.is_file():
+                    # Exists but is not a file (maybe a directory)
+                    backup = self.session_dir / 'history.txt.invalid'
+                    history_file.rename(backup)
+                    self.console.print(f"[yellow]Warning: Renamed invalid history to {backup}[/yellow]")
+
+                # Create if doesn't exist
+                history_file.touch(exist_ok=True)
+
+                # Try to read existing history
+                readline.read_history_file(str(history_file))
+            except (FileNotFoundError, PermissionError, OSError) as e:
+                # History file operations are non-critical, continue without history
+                self.console.print(f"[dim]Note: History disabled ({e})[/dim]", style="dim")
+
+            # Save history on exit (only if we can write)
+            if os.access(history_file, os.W_OK):
+                import atexit
+                atexit.register(self._save_history_safe, str(history_file))
+
+            # Tab completion
+            try:
+                readline.parse_and_bind('tab: complete')
+                readline.set_completer(self._completer)
+            except Exception:
+                pass  # Completion is optional
+
+            # Vi or Emacs mode
+            try:
+                readline.parse_and_bind('set editing-mode emacs')
+            except Exception:
+                pass  # Editing mode is optional
+
+        except Exception as e:
+            # Readline setup is non-critical, continue without it
+            self.console.print(f"[dim]Note: Advanced input features disabled ({e})[/dim]", style="dim")
+
+    def _save_history_safe(self, filename: str):
+        """Safely save history file, catching any errors."""
+        try:
+            readline.write_history_file(filename)
+        except Exception:
+            pass  # Ignore history save errors
 
     def _completer(self, text: str, state: int):
         """Auto-completion for commands."""
@@ -160,8 +234,10 @@ class InteractiveShell:
                 if user_input.startswith('/'):
                     self._handle_command(user_input)
                 else:
-                    # Regular message - execute with orchestrator
-                    self._handle_message(user_input)
+                    # Regular message - check if this should be a follow-up
+                    is_followup = self._should_follow_up(user_input)
+                    if is_followup is not None:  # None means cancelled
+                        self._handle_message(user_input, is_followup=is_followup)
 
             except KeyboardInterrupt:
                 self.console.print("\n[yellow]Use /exit or /quit to exit[/yellow]")
@@ -194,6 +270,7 @@ collaborate on tasks, and iterate on implementations.
 
 **Available Commands:**
 - `/help` - Show all commands
+- `/followup <msg>` - Continue working on the previous task
 - `/agents` - List available agents
 - `/workflows` - List available workflows
 - `/switch <agent>` - Switch to a specific agent
@@ -201,7 +278,8 @@ collaborate on tasks, and iterate on implementations.
 
 **Getting Started:**
 Just type your request and press Enter. The system will coordinate the appropriate
-AI agents to help you accomplish your task.
+AI agents to help you accomplish your task. After completion, use `/followup` to
+continue iterating on the same task with additional requirements.
 
 Type `/help` for more information.
         """
@@ -239,13 +317,60 @@ Type `/help` for more information.
             self.console.print(f"[red]Unknown command: {command}[/red]")
             self.console.print("[yellow]Type /help for available commands[/yellow]")
 
-    def _handle_message(self, message: str):
+    def _should_follow_up(self, message: str) -> bool:
+        """Determine if message should be treated as a follow-up."""
+        # If we have a previous task, ask user
+        if self.history.context.get('last_task'):
+            # Check for obvious follow-up indicators
+            followup_indicators = [
+                'add', 'also', 'now', 'then', 'next', 'additionally',
+                'improve', 'fix', 'change', 'update', 'modify',
+                'make it', 'can you', 'please', 'try'
+            ]
+
+            message_lower = message.lower()
+            has_indicator = any(word in message_lower for word in followup_indicators)
+
+            # Auto follow-up if message is short and has indicators
+            if len(message.split()) < 10 and has_indicator:
+                self.console.print("[dim]💡 Detected as follow-up to previous task[/dim]")
+                return True
+
+            # Otherwise ask user
+            self.console.print(f"\n[yellow]Continue previous task?[/yellow]")
+            self.console.print(f"[dim]Previous: {self.history.context['last_task'][:60]}...[/dim]")
+
+            response = Prompt.ask(
+                "[cyan]Continue (c), New task (n), or Cancel (x)?[/cyan]",
+                choices=['c', 'n', 'x'],
+                default='c'
+            )
+
+            if response == 'c':
+                self.console.print("[dim]✓ Continuing previous task with context[/dim]\n")
+                return True
+            elif response == 'x':
+                self.console.print("[yellow]Cancelled[/yellow]")
+                return None  # Signal to skip
+            else:
+                self.console.print("[dim]✓ Starting new task[/dim]\n")
+                return False
+
+        return False
+
+    def _handle_message(self, message: str, is_followup: bool = False):
         """Handle user message and execute with orchestrator."""
         # Add to history
-        self.history.add_message('user', message)
+        self.history.add_message('user', message, {'is_followup': is_followup})
 
-        # Get context from history
+        # Get context from history - include previous results for follow-ups
         context = self.history.get_context()
+
+        # For follow-ups, add previous task context
+        if is_followup and self.history.context.get('last_task'):
+            previous_task = self.history.context['last_task']
+            previous_output = self.history.context.get('last_output', '')
+            message = f"Previous task: {previous_task}\nPrevious result: {previous_output}\n\nFollow-up: {message}"
 
         # Show thinking indicator
         with self.console.status("[bold cyan]Orchestrating agents...[/bold cyan]"):
@@ -267,12 +392,22 @@ Type `/help` for more information.
                     'iterations': len(results.get('iterations', []))
                 })
 
-                # Update context with results
+                # Update context with results for future follow-ups
+                self.history.context['last_task'] = message
+                self.history.context['last_output'] = final_output
+                self.history.context['last_success'] = results.get('success', False)
+
+                # Store files from all iterations
+                all_files = []
                 if results.get('iterations'):
-                    last_iteration = results['iterations'][-1]
-                    for step in last_iteration.get('steps', []):
-                        if step.get('files_modified'):
-                            self.history.context['files'] = step['files_modified']
+                    for iteration in results['iterations']:
+                        for step in iteration.get('steps', []):
+                            if step.get('files_modified'):
+                                all_files.extend(step['files_modified'])
+
+                if all_files:
+                    self.history.context['files'] = all_files
+                    self.history.context['workspace'] = './workspace'
 
             except Exception as e:
                 self.console.print(f"[red]Error executing task: {e}[/red]")
@@ -280,7 +415,7 @@ Type `/help` for more information.
                     self.console.print_exception()
 
     def _display_results(self, results: Dict[str, Any]):
-        """Display execution results."""
+        """Display execution results with enhanced formatting."""
         self.console.print()
 
         # Show iteration summary
@@ -305,12 +440,31 @@ Type `/help` for more information.
 
             self.console.print()
 
+        # Collect all generated files
+        all_files = []
+        for iteration in iterations:
+            for step in iteration.get('steps', []):
+                if step.get('files_modified'):
+                    all_files.extend(step['files_modified'])
+
+        # Show generated files
+        if all_files:
+            self.console.print("[bold cyan]📁 Generated Files:[/bold cyan]")
+            for file in all_files:
+                self.console.print(f"  📄 [green]{file}[/green]")
+            self.console.print(f"\n[dim]Workspace: ./workspace[/dim]\n")
+
         # Show final output
         final_output = results.get('final_output', '')
         if final_output:
-            # Limit output length in interactive mode
-            if len(final_output) > 1000:
-                final_output = final_output[:1000] + "\n\n[dim]... (output truncated)[/dim]"
+            # Full output - no truncation, but offer paging for very long output
+            if len(final_output) > 2000:
+                show_full = Confirm.ask(
+                    f"Output is {len(final_output)} characters. Show full output?",
+                    default=False
+                )
+                if not show_full:
+                    final_output = final_output[:2000] + "\n\n[dim]... (use /context to see full output)[/dim]"
 
             self.console.print(Panel(
                 final_output,
@@ -320,7 +474,8 @@ Type `/help` for more information.
 
         # Show success status
         if results.get('success'):
-            self.console.print("[bold green]✓ Task completed successfully![/bold green]\n")
+            self.console.print("[bold green]✓ Task completed successfully![/bold green]")
+            self.console.print("[dim]Type your next task, or use /followup to continue this task[/dim]\n")
         else:
             self.console.print("[bold yellow]⚠ Task completed with issues[/bold yellow]\n")
 
@@ -335,6 +490,7 @@ Type `/help` for more information.
         table.add_row("/help", "Show this help message")
         table.add_row("/exit, /quit", "Exit the interactive shell")
         table.add_row("/clear", "Clear the screen")
+        table.add_row("/followup <msg>", "Continue working on the previous task with new instructions")
         table.add_row("/history", "Show conversation history")
         table.add_row("/agents", "List available agents")
         table.add_row("/workflows", "List available workflows")
@@ -534,3 +690,25 @@ Type `/help` for more information.
         """
 
         self.console.print(Panel(info.strip(), border_style="cyan"))
+
+    def cmd_followup(self, args: str):
+        """Continue working on the previous task."""
+        if not self.history.context.get('last_task'):
+            self.console.print("[yellow]No previous task to follow up on. Start a new task first.[/yellow]")
+            return
+
+        if not args:
+            self.console.print("[yellow]Please provide instructions for the follow-up.[/yellow]")
+            self.console.print("[dim]Example: /followup add error handling[/dim]")
+            return
+
+        # Show context
+        last_task = self.history.context.get('last_task', '')
+        files = self.history.context.get('files', [])
+
+        self.console.print(f"\n[bold cyan]Following up on:[/bold cyan] {last_task[:100]}...")
+        if files:
+            self.console.print(f"[dim]Files in context: {', '.join(files[:3])}{'...' if len(files) > 3 else ''}[/dim]\n")
+
+        # Handle as a follow-up message
+        self._handle_message(args, is_followup=True)

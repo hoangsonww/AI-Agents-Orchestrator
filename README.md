@@ -11,6 +11,10 @@ This project provides a wrapper CLI that coordinates multiple AI agents to work 
 3. **Refinement**: Claude implements feedback and improvements
 4. **Iteration**: The process continues as needed until the task is complete
 
+<p align="center">
+  <img src="docs/images/cli.png" alt="Architecture Diagram" width="600"/>
+</p>
+
 ## Features
 
 - 🤝 **Multi-Agent Collaboration**: Coordinate multiple AI coding assistants
@@ -25,28 +29,28 @@ This project provides a wrapper CLI that coordinates multiple AI agents to work 
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│         AI Orchestrator CLI                 │
-│  (User Interface & Workflow Management)     │
-└─────────────────┬───────────────────────────┘
-                  │
-        ┌─────────┴─────────┐
-        │   Orchestrator    │
-        │   Core Engine     │
-        └─────────┬─────────┘
-                  │
-    ┌─────────────┼─────────────┬─────────────┐
-    │             │             │             │
-┌───▼───┐   ┌────▼────┐   ┌────▼────┐   ┌────▼────┐
-│ Codex │   │ Gemini  │   │ Claude  │   │ Copilot │
-│Adapter│   │ Adapter │   │ Adapter │   │ Adapter │
-└───┬───┘   └────┬────┘   └────┬────┘   └────┬────┘
-    │            │             │             │
-┌───▼───┐   ┌────▼────┐   ┌────▼────┐   ┌────▼────┐
-│Codex  │   │Gemini   │   │Claude   │   │Copilot  │
-│CLI    │   │CLI      │   │Code     │   │CLI      │
-└───────┘   └─────────┘   └─────────┘   └─────────┘
+```mermaid
+graph TD
+    A[AI Orchestrator CLI<br/>User Interface & Workflow Management]
+    B[Orchestrator Core Engine]
+    C[Codex Adapter]
+    D[Gemini Adapter]
+    E[Claude Adapter]
+    F[Copilot Adapter]
+    G[Codex CLI]
+    H[Gemini CLI]
+    I[Claude Code]
+    J[Copilot CLI]
+    
+    A --> B
+    B --> C
+    B --> D
+    B --> E
+    B --> F
+    C --> G
+    D --> H
+    E --> I
+    F --> J
 ```
 
 ## Installation
@@ -57,7 +61,7 @@ This project provides a wrapper CLI that coordinates multiple AI agents to work 
 - AI CLI tools installed and authenticated:
   - Claude Code
   - OpenAI Codex CLI
-  - GitHub Copilot CLI
+  - GitHub Copilot CLI (optional)
   - Google Gemini CLI
 
 ### Setup
@@ -152,6 +156,10 @@ Session saved!
 
 orchestrator (default) > /exit
 ```
+
+<p align="center">
+  <img src="docs/images/interactive.png" alt="Interactive Shell" width="600"/>
+</p>
 
 ### One-Shot Command Mode
 

@@ -1,0 +1,17 @@
+#!/bin/bash
+# Wrapper script for ai-orchestrator that ensures Node.js v20 is used
+
+# Load NVM if available
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Use Node.js v20
+if command -v nvm &>/dev/null; then
+    nvm use 20 &>/dev/null
+fi
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run the actual ai-orchestrator Python script
+exec "$SCRIPT_DIR/ai-orchestrator" "$@"

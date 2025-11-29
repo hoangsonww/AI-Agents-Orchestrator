@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(cp:*)",
+      "Bash(python3 -m pip:*)",
+      "Bash(/Users/davidnguyen/PycharmProjects/AI-Coding-Tools-Collaborative/ai-orchestrator:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(python3:*)",
+      "Bash(gemini --version:*)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(nvm install:*)",
+      "Bash(nvm use:*)",
+      "Bash(npm install:*)",
+      "Bash(nvm alias:*)",
+      "Bash(chmod:*)",
+      "Bash(./ai-orchestrator validate:*)",
+      "Bash(./ai-orchestrator run:*)",
+      "Bash(codex --help:*)",
+      "Bash(gemini --help:*)",
+      "Bash(codex exec \"write a hello world in python\")",
+      "Bash(codex exec --help:*)",
+      "Bash(DEBUG=1 python3:*)",
+      "Bash(./ai-orchestrator interactive:*)",
+      "Bash(./ai-orchestrator:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

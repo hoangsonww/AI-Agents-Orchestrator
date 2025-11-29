@@ -143,7 +143,8 @@ class BaseAdapter(ABC):
                 success, stdout, stderr, modified_files = self.cli_communicator.execute_in_workspace(
                     prompt=prompt,
                     workspace_dir=working_dir,
-                    timeout=self.timeout
+                    timeout=self.timeout,
+                    method=self.communication_method
                 )
 
                 return AgentResponse(

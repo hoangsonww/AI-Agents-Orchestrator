@@ -56,3 +56,4 @@ Thumbs.db
 config/local.yaml
 config/*.local.yaml
 .env
+/ui/frontend/node_modules/

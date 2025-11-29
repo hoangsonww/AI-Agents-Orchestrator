@@ -64,28 +64,70 @@ class CLICommunicator:
         timeout: int,
         working_dir: Optional[str]
     ) -> Tuple[bool, str, str]:
-        """Execute by passing prompt via stdin."""
+        """Execute by passing prompt via stdin with TTY support using script command."""
         try:
             self.logger.debug(f"Executing {self.command} with stdin input")
 
-            process = subprocess.Popen(
-                [self.command],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                cwd=working_dir
-            )
+            # Use 'script' command to provide a pseudo-terminal on macOS/Linux
+            # This makes CLIs think they're running in an interactive terminal
+            try:
+                # Create temporary file for output
+                temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.txt')
+                temp_file_path = temp_file.name
+                temp_file.close()
 
-            stdout, stderr = process.communicate(input=prompt, timeout=timeout)
-            success = process.returncode == 0
+                # Create input file
+                input_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
+                input_file.write(prompt)
+                input_file.close()
 
-            return success, stdout, stderr
+                # Use script command to provide PTY
+                # On macOS, use: script -q output_file command
+                # The -q flag makes it quiet (no start/done messages)
+                script_cmd = f"cat {input_file.name} | script -q {temp_file_path} {self.command}"
+
+                process = subprocess.Popen(
+                    script_cmd,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    cwd=working_dir
+                )
+
+                stdout, stderr = process.communicate(timeout=timeout)
+
+                # Read output from temp file
+                try:
+                    with open(temp_file_path, 'r') as f:
+                        output_content = f.read()
+                except Exception:
+                    output_content = stdout
+
+                # Cleanup
+                try:
+                    os.unlink(temp_file_path)
+                    os.unlink(input_file.name)
+                except Exception:
+                    pass
+
+                success = process.returncode == 0
+                return success, output_content if output_content else stdout, stderr
+
+            except Exception as script_error:
+                # Fallback to regular stdin if script method fails
+                self.logger.debug(f"Script method failed, using argument method: {script_error}")
+
+                # Try with argument method instead (most CLI tools support this)
+                return self._execute_argument(prompt, timeout, working_dir)
 
         except subprocess.TimeoutExpired:
             self.logger.error(f"Command timed out after {timeout}s")
-            process.kill()
-            stdout, stderr = process.communicate()
+            try:
+                process.kill()
+                stdout, stderr = process.communicate()
+            except Exception:
+                stdout, stderr = "", "Timeout"
             return False, stdout, f"Timeout after {timeout}s\n{stderr}"
 
         except Exception as e:
@@ -158,21 +200,59 @@ class CLICommunicator:
         try:
             self.logger.debug(f"Executing {self.command} with argument")
 
-            # Common patterns: cli "prompt" or cli --prompt "prompt"
+            # Set up environment with proper Node options for compatibility
+            env = os.environ.copy()
+
+            # For Node.js CLIs that may have compatibility issues
+            if self.command in ['gemini', 'gemini-cli']:
+                # Use newer Node flags if needed
+                env['NODE_OPTIONS'] = '--no-warnings'
+
+            # Build command based on CLI tool
+            if self.command == 'codex':
+                # Use codex exec for non-interactive execution
+                cmd = [self.command, 'exec', prompt]
+            elif self.command in ['gemini', 'gemini-cli']:
+                # Gemini takes positional argument
+                cmd = [self.command, prompt]
+            elif self.command == 'claude':
+                # Claude uses --print flag for non-interactive mode with positional argument
+                cmd = [self.command, '--print', prompt]
+            else:
+                # Default: positional argument
+                cmd = [self.command, prompt]
+
             process = subprocess.Popen(
-                [self.command, prompt],
+                cmd,
+                stdin=subprocess.DEVNULL,  # Close stdin to prevent interactive prompts
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                cwd=working_dir
+                cwd=working_dir,
+                env=env
             )
 
             stdout, stderr = process.communicate(timeout=timeout)
             success = process.returncode == 0
 
+            # Debug logging
+            self.logger.debug(f"Command completed: returncode={process.returncode}")
+            self.logger.debug(f"Stdout length: {len(stdout)}, Stderr length: {len(stderr)}")
+            if not success:
+                self.logger.error(f"Command failed with stderr: {stderr[:500]}")
+
             return success, stdout, stderr
 
+        except subprocess.TimeoutExpired:
+            self.logger.error(f"Command timed out after {timeout}s")
+            try:
+                process.kill()
+                stdout, stderr = process.communicate()
+            except Exception:
+                stdout, stderr = "", "Timeout"
+            return False, stdout, f"Timeout after {timeout}s\n{stderr}"
         except Exception as e:
+            self.logger.error(f"Execution failed: {e}")
             return False, "", str(e)
 
     def _execute_heredoc(
@@ -209,7 +289,8 @@ EOF
         self,
         prompt: str,
         workspace_dir: str,
-        timeout: int = 300
+        timeout: int = 300,
+        method: str = 'arg'
     ) -> Tuple[bool, str, str, List[str]]:
         """
         Execute CLI in a workspace directory and track file changes.
@@ -220,6 +301,7 @@ EOF
             prompt: The prompt to send
             workspace_dir: Directory to execute in
             timeout: Timeout in seconds
+            method: Communication method to use (default: 'arg')
 
         Returns:
             Tuple of (success, stdout, stderr, modified_files)
@@ -230,8 +312,8 @@ EOF
         # Get initial file state
         initial_files = self._get_file_state(workspace_path)
 
-        # Execute command in workspace
-        success, stdout, stderr = self._execute_stdin(prompt, timeout, workspace_dir)
+        # Execute command in workspace using the specified method
+        success, stdout, stderr = self.execute_with_prompt(prompt, method, timeout, workspace_dir)
 
         # Get modified files
         modified_files = self._get_modified_files(workspace_path, initial_files)
@@ -288,7 +370,7 @@ EOF
         **kwargs
     ) -> Tuple[bool, str, str]:
         """
-        Execute with automatic retry on failure.
+        Execute with automatic retry on failure and method fallback.
 
         Args:
             prompt: The prompt to send
@@ -300,6 +382,16 @@ EOF
             Tuple of (success, stdout, stderr)
         """
         last_error = ""
+        method = kwargs.get('method', 'stdin')
+
+        # Define fallback methods to try
+        fallback_methods = []
+        if method == 'stdin':
+            fallback_methods = ['stdin', 'arg', 'heredoc']
+        elif method == 'arg':
+            fallback_methods = ['arg', 'stdin', 'heredoc']
+        else:
+            fallback_methods = [method, 'stdin', 'arg']
 
         for attempt in range(max_retries):
             if attempt > 0:
@@ -307,10 +399,25 @@ EOF
                 self.logger.info(f"Retry attempt {attempt + 1}/{max_retries} after {sleep_time}s")
                 time.sleep(sleep_time)
 
+            # Try current method
+            current_method = fallback_methods[min(attempt, len(fallback_methods) - 1)]
+            kwargs['method'] = current_method
+
+            self.logger.debug(f"Trying method: {current_method}")
             success, stdout, stderr = self.execute_with_prompt(prompt, **kwargs)
 
             if success:
                 return success, stdout, stderr
+
+            # Check if error is due to Node.js compatibility
+            if 'File is not defined' in stderr or 'ReferenceError' in stderr:
+                self.logger.warning(f"Node.js compatibility issue detected with {self.command}")
+                # Try to provide helpful error message
+                if attempt == max_retries - 1:
+                    last_error = (f"Node.js compatibility error. "
+                                f"Try upgrading Node.js to v20+: nvm install 20 && nvm use 20\n"
+                                f"Original error: {stderr}")
+                    break
 
             last_error = stderr
 
@@ -338,13 +445,13 @@ class AgentCLIRegistry:
         'claude': {
             'command': 'claude',
             'method': 'arg',
-            'prompt_flag': '--message',
+            'prompt_flag': '--print',
             'supports_workspace': True,
             'output_format': 'text'
         },
         'codex': {
             'command': 'codex',
-            'method': 'stdin',
+            'method': 'arg',
             'supports_workspace': True,
             'output_format': 'text'
         },

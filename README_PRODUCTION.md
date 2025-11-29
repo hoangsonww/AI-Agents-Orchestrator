@@ -2,12 +2,6 @@
 
 <div align="center">
 
-[![CI](https://github.com/your-org/ai-orchestrator/workflows/CI/badge.svg)](https://github.com/your-org/ai-orchestrator/actions)
-[![Coverage](https://codecov.io/gh/your-org/ai-orchestrator/branch/main/graph/badge.svg)](https://codecov.io/gh/your-org/ai-orchestrator)
-[![Python Version](https://img.shields.io/pypi/pyversions/ai-orchestrator.svg)](https://pypi.org/project/ai-orchestrator/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
 **Enterprise-grade orchestration system for collaborative AI coding assistants**
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Production Deployment](#-production-deployment)
@@ -133,38 +127,43 @@ vim .env
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│         AI Orchestrator CLI                 │
-│  (User Interface & Workflow Management)     │
-└─────────────────┬───────────────────────────┘
-                  │
-        ┌─────────┴─────────┐
-        │   Core Components  │
-        │  ┌──────────────┐ │
-        │  │ Orchestrator │ │
-        │  ├──────────────┤ │
-        │  │ Config Mgr   │ │
-        │  ├──────────────┤ │
-        │  │ Metrics      │ │
-        │  ├──────────────┤ │
-        │  │ Security     │ │
-        │  ├──────────────┤ │
-        │  │ Cache        │ │
-        │  └──────────────┘ │
-        └─────────┬─────────┘
-                  │
-    ┌─────────────┼─────────────┬─────────────┐
-    │             │             │             │
-┌───▼───┐   ┌────▼────┐   ┌────▼────┐   ┌────▼────┐
-│ Codex │   │ Gemini  │   │ Claude  │   │ Copilot │
-│Adapter│   │ Adapter │   │ Adapter │   │ Adapter │
-└───┬───┘   └────┬────┘   └────┬────┘   └────┬────┘
-    │            │             │             │
-┌───▼───┐   ┌────▼────┐   ┌────▼────┐   ┌────▼────┐
-│Codex  │   │Gemini   │   │Claude   │   │Copilot  │
-│CLI    │   │CLI      │   │Code     │   │CLI      │
-└───────┘   └─────────┘   └─────────┘   └─────────┘
+```mermaid
+graph TD
+    A[AI Orchestrator CLI<br/>User Interface & Workflow Management]
+    
+    B[Core Components]
+    B1[Orchestrator]
+    B2[Config Mgr]
+    B3[Metrics]
+    B4[Security]
+    B5[Cache]
+    
+    C[Codex Adapter]
+    D[Gemini Adapter]
+    E[Claude Adapter]
+    F[Copilot Adapter]
+    
+    G[Codex CLI]
+    H[Gemini CLI]
+    I[Claude Code]
+    J[Copilot CLI]
+    
+    A --> B
+    B --> B1
+    B --> B2
+    B --> B3
+    B --> B4
+    B --> B5
+    
+    B1 --> C
+    B1 --> D
+    B1 --> E
+    B1 --> F
+    
+    C --> G
+    D --> H
+    E --> I
+    F --> J
 ```
 
 ## 🐳 Production Deployment
