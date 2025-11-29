@@ -169,7 +169,7 @@ class ConfigManager:
         if config_file and config_file.exists():
             import yaml
 
-            with open(config_file, "r") as f:
+            with open(config_file) as f:
                 self.yaml_config = yaml.safe_load(f) or {}
 
     def get_agent_config(self, agent_name: str) -> Optional[Dict[str, Any]]:
@@ -271,7 +271,9 @@ def get_config_manager() -> ConfigManager:
     return _config_manager
 
 
-def init_config(config_file: Optional[Path] = None, env_file: Optional[Path] = None) -> ConfigManager:
+def init_config(
+    config_file: Optional[Path] = None, env_file: Optional[Path] = None
+) -> ConfigManager:
     """Initialize configuration manager."""
     global _config_manager
     _config_manager = ConfigManager(config_file=config_file, env_file=env_file)

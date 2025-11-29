@@ -123,13 +123,13 @@ export const useOrchestratorStore = defineStore('orchestrator', () => {
 
       socket.value.on('task_completed', (data) => {
         console.log('Task completed:', data)
-        status.value = 'completed'
+        status.value = data.success ? 'completed' : 'error'
         output.value = data.output || ''
         files.value = data.files || []
         iterations.value = data.iterations || []
 
         // Store for follow-ups
-        lastTask.value = task.value
+        lastTask.value = data.task
         lastOutput.value = data.output || ''
         canFollowUp.value = data.success !== false
         addLog(`Task completed ${data.success === false ? '(failed)' : 'successfully'}`, data.success === false ? 'warn' : 'success')

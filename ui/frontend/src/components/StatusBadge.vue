@@ -45,7 +45,8 @@ const statusText = computed(() => {
   color: #065f46;
 }
 
-.status-error {
+.status-error,
+.status-failed {
   background-color: #fee2e2;
   color: #991b1b;
 }

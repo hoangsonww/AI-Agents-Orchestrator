@@ -7,13 +7,13 @@ from typing import Any, Callable, Optional, Tuple, Type, TypeVar, Union
 
 from tenacity import (
     RetryCallState,
+    after_log,
+    before_sleep_log,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
     wait_fixed,
-    before_sleep_log,
-    after_log,
 )
 
 from .exceptions import AgentExecutionError, AgentTimeoutError

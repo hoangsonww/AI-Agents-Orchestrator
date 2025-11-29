@@ -5,56 +5,63 @@ AI Orchestrator - Main CLI Entry Point
 Coordinates multiple AI coding assistants to collaborate on software development tasks.
 """
 
-import sys
-import os
 import logging
+import os
+import subprocess
+import sys
 from pathlib import Path
+
 import click
+import yaml
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
-import yaml
-import subprocess
+
 
 # Setup Node.js environment before anything else
 def setup_node_environment():
     """Ensure Node.js v20 is being used."""
     import glob
-    nvm_dir = os.path.expanduser('~/.nvm')
+
+    nvm_dir = os.path.expanduser("~/.nvm")
     if os.path.exists(nvm_dir):
         # Find the latest v20 node installation
-        node_versions_dir = os.path.join(nvm_dir, 'versions', 'node')
+        node_versions_dir = os.path.join(nvm_dir, "versions", "node")
         if os.path.exists(node_versions_dir):
             # Look for any v20.x.x version
-            v20_dirs = glob.glob(os.path.join(node_versions_dir, 'v20.*'))
+            v20_dirs = glob.glob(os.path.join(node_versions_dir, "v20.*"))
             if v20_dirs:
                 # Use the latest v20 found
-                node_v20_path = os.path.join(sorted(v20_dirs)[-1], 'bin')
+                node_v20_path = os.path.join(sorted(v20_dirs)[-1], "bin")
                 if os.path.exists(node_v20_path):
                     # Prepend to PATH to ensure it takes precedence
-                    current_path = os.environ.get('PATH', '')
-                    os.environ['PATH'] = f"{node_v20_path}:{current_path}"
+                    current_path = os.environ.get("PATH", "")
+                    os.environ["PATH"] = f"{node_v20_path}:{current_path}"
                     return True
     return False
+
 
 # Setup Node environment
 if setup_node_environment():
     # Verify the setup
     try:
-        node_version = subprocess.check_output(['node', '--version'], text=True, stderr=subprocess.DEVNULL).strip()
-        if not node_version.startswith('v20'):
-            print(f"Warning: Node.js v20 not active. Current version: {node_version}", file=sys.stderr)
+        node_version = subprocess.check_output(
+            ["node", "--version"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        if not node_version.startswith("v20"):
+            print(
+                f"Warning: Node.js v20 not active. Current version: {node_version}", file=sys.stderr
+            )
     except Exception:
         pass
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from orchestrator import Orchestrator, InteractiveShell
 from adapters import AgentCapability
-
+from orchestrator import InteractiveShell, Orchestrator
 
 console = Console()
 
@@ -66,13 +73,13 @@ def setup_logging(log_level: str, log_file: str):
         format="%(message)s",
         handlers=[
             RichHandler(rich_tracebacks=True, console=console),
-            logging.FileHandler(log_file)
-        ]
+            logging.FileHandler(log_file),
+        ],
     )
 
 
 @click.group()
-@click.version_option(version='1.0.0')
+@click.version_option(version="1.0.0")
 def cli():
     """
     AI Orchestrator - Coordinate multiple AI coding assistants.
@@ -85,20 +92,16 @@ def cli():
 
 
 @cli.command()
-@click.argument('task')
-@click.option('--workflow', '-w', default='default',
-              help='Workflow to use (default, quick, thorough, etc.)')
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='Path to configuration file')
-@click.option('--max-iterations', '-m', type=int,
-              help='Maximum number of refinement iterations')
-@click.option('--output', '-o', type=click.Path(),
-              help='Output directory for generated code')
-@click.option('--verbose', '-v', is_flag=True,
-              help='Enable verbose logging')
-@click.option('--dry-run', is_flag=True,
-              help='Show execution plan without running')
-@click.option('--agents', help='Comma-separated list of agents to use')
+@click.argument("task")
+@click.option(
+    "--workflow", "-w", default="default", help="Workflow to use (default, quick, thorough, etc.)"
+)
+@click.option("--config", "-c", type=click.Path(exists=True), help="Path to configuration file")
+@click.option("--max-iterations", "-m", type=int, help="Maximum number of refinement iterations")
+@click.option("--output", "-o", type=click.Path(), help="Output directory for generated code")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
+@click.option("--dry-run", is_flag=True, help="Show execution plan without running")
+@click.option("--agents", help="Comma-separated list of agents to use")
 def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents):
     """
     Execute a task using AI agent collaboration.
@@ -110,23 +113,23 @@ def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents
     config_path = config or Path(__file__).parent / "config" / "agents.yaml"
 
     # Setup logging
-    log_level = 'DEBUG' if verbose else 'INFO'
-    setup_logging(log_level, 'ai-orchestrator.log')
+    log_level = "DEBUG" if verbose else "INFO"
+    setup_logging(log_level, "ai-orchestrator.log")
 
     # Create orchestrator
     try:
-        orchestrator = Orchestrator(config_path)
+        orchestrator = Orchestrator(str(config_path) if config_path else None)
     except Exception as e:
         console.print(f"[red]Error initializing orchestrator: {e}[/red]")
         sys.exit(1)
 
     # Show header
-    console.print(Panel.fit(
-        f"[bold cyan]AI Orchestrator[/bold cyan]\n"
-        f"Task: {task}\n"
-        f"Workflow: {workflow}",
-        border_style="cyan"
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold cyan]AI Orchestrator[/bold cyan]\n" f"Task: {task}\n" f"Workflow: {workflow}",
+            border_style="cyan",
+        )
+    )
 
     # Show available agents
     available = orchestrator.get_available_agents()
@@ -139,7 +142,7 @@ def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents
     # Dry run - show plan
     if dry_run:
         console.print("\n[yellow]Dry run - execution plan:[/yellow]")
-        workflows = orchestrator.config.get('workflows', {})
+        workflows = orchestrator.config.get("workflows", {})
         workflow_config = workflows.get(workflow, [])
 
         table = Table(title=f"Workflow: {workflow}")
@@ -148,11 +151,7 @@ def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents
         table.add_column("Task", style="yellow")
 
         for i, step in enumerate(workflow_config, 1):
-            table.add_row(
-                str(i),
-                step.get('agent', 'unknown'),
-                step.get('task', 'unknown')
-            )
+            table.add_row(str(i), step.get("agent", "unknown"), step.get("task", "unknown"))
 
         console.print(table)
         return
@@ -162,16 +161,12 @@ def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents
 
     try:
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             task_progress = progress.add_task("[cyan]Orchestrating agents...", total=None)
 
             results = orchestrator.execute_task(
-                task=task,
-                workflow_name=workflow,
-                max_iterations=max_iterations
+                task=task, workflow_name=workflow, max_iterations=max_iterations
             )
 
             progress.update(task_progress, completed=True)
@@ -180,33 +175,33 @@ def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents
         console.print("\n[bold green]Execution complete![/bold green]\n")
 
         # Show iterations
-        for i, iteration in enumerate(results.get('iterations', []), 1):
+        for i, iteration in enumerate(results.get("iterations", []), 1):
             console.print(f"[bold]Iteration {i}:[/bold]")
 
-            for step in iteration.get('steps', []):
-                status = "✓" if step.get('success') else "✗"
-                color = "green" if step.get('success') else "red"
-                agent = step.get('agent')
-                task_type = step.get('task')
+            for step in iteration.get("steps", []):
+                status = "✓" if step.get("success") else "✗"
+                color = "green" if step.get("success") else "red"
+                agent = step.get("agent")
+                task_type = step.get("task")
 
                 console.print(f"  [{color}]{status}[/{color}] {agent} - {task_type}")
 
-                if step.get('suggestions'):
+                if step.get("suggestions"):
                     console.print(f"     Suggestions: {len(step['suggestions'])}")
 
         # Show final output (full output, not truncated)
-        if results.get('final_output'):
+        if results.get("final_output"):
             console.print("\n[bold]Final Output:[/bold]")
-            output = results['final_output']
+            output = results["final_output"]
             # Display full output
             console.print(Panel(output, border_style="green"))
 
         # Show generated files
         files_created = []
-        for iteration in results.get('iterations', []):
-            for step in iteration.get('steps', []):
-                if step.get('files_modified'):
-                    files_created.extend(step['files_modified'])
+        for iteration in results.get("iterations", []):
+            for step in iteration.get("steps", []):
+                if step.get("files_modified"):
+                    files_created.extend(step["files_modified"])
 
         if files_created:
             console.print("\n[bold]Files Created/Modified:[/bold]")
@@ -214,11 +209,11 @@ def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents
                 console.print(f"  📄 [cyan]{file_path}[/cyan]")
 
             # Show workspace location
-            workspace = output or './workspace'
+            workspace = output or "./workspace"
             console.print(f"\n[dim]Workspace: {workspace}[/dim]")
 
         # Show success status
-        if results.get('success'):
+        if results.get("success"):
             console.print("\n[bold green]Task completed successfully! ✓[/bold green]")
         else:
             console.print("\n[bold yellow]Task completed with some issues[/bold yellow]")
@@ -231,14 +226,13 @@ def run(task, workflow, config, max_iterations, output, verbose, dry_run, agents
 
 
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='Path to configuration file')
+@click.option("--config", "-c", type=click.Path(exists=True), help="Path to configuration file")
 def agents(config):
     """List available agents and their status."""
     config_path = config or Path(__file__).parent / "config" / "agents.yaml"
 
     try:
-        orchestrator = Orchestrator(config_path)
+        orchestrator = Orchestrator(str(config_path))
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
@@ -249,45 +243,36 @@ def agents(config):
     table.add_column("Command", style="yellow")
     table.add_column("Role", style="magenta")
 
-    agents_config = orchestrator.config.get('agents', {})
+    agents_config = orchestrator.config.get("agents", {})
 
     for name, adapter in orchestrator.adapters.items():
         agent_config = agents_config.get(name, {})
-        table.add_row(
-            name,
-            "✓ Available",
-            adapter.command,
-            agent_config.get('role', 'N/A')
-        )
+        table.add_row(name, "✓ Available", adapter.command, agent_config.get("role", "N/A"))
 
     # Show unavailable agents
     for name, agent_config in agents_config.items():
         if name not in orchestrator.adapters:
             status = "✗ Not available"
-            if not agent_config.get('enabled'):
+            if not agent_config.get("enabled"):
                 status = "○ Disabled"
 
             table.add_row(
-                name,
-                status,
-                agent_config.get('command', 'N/A'),
-                agent_config.get('role', 'N/A')
+                name, status, agent_config.get("command", "N/A"), agent_config.get("role", "N/A")
             )
 
     console.print(table)
 
 
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='Path to configuration file')
+@click.option("--config", "-c", type=click.Path(exists=True), help="Path to configuration file")
 def workflows(config):
     """List available workflows."""
     config_path = config or Path(__file__).parent / "config" / "agents.yaml"
 
-    with open(config_path, 'r') as f:
+    with open(config_path) as f:
         config_data = yaml.safe_load(f)
 
-    workflows_config = config_data.get('workflows', {})
+    workflows_config = config_data.get("workflows", {})
 
     table = Table(title="Available Workflows")
     table.add_column("Workflow", style="cyan")
@@ -295,8 +280,8 @@ def workflows(config):
     table.add_column("Description", style="yellow")
 
     for name, steps in workflows_config.items():
-        step_summary = " → ".join([step.get('agent', '?') for step in steps])
-        description = steps[0].get('description', 'N/A') if steps else 'N/A'
+        step_summary = " → ".join([step.get("agent", "?") for step in steps])
+        description = steps[0].get("description", "N/A") if steps else "N/A"
 
         table.add_row(name, step_summary, description)
 
@@ -304,8 +289,7 @@ def workflows(config):
 
 
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='Path to configuration file')
+@click.option("--config", "-c", type=click.Path(exists=True), help="Path to configuration file")
 def validate(config):
     """Validate configuration and check agent availability."""
     config_path = config or Path(__file__).parent / "config" / "agents.yaml"
@@ -321,7 +305,7 @@ def validate(config):
 
     # Try to load config
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config_data = yaml.safe_load(f)
         console.print("[green]✓ Config file is valid YAML[/green]")
     except Exception as e:
@@ -329,7 +313,7 @@ def validate(config):
         sys.exit(1)
 
     # Check required sections
-    required_sections = ['agents', 'workflows', 'settings']
+    required_sections = ["agents", "workflows", "settings"]
     for section in required_sections:
         if section in config_data:
             console.print(f"[green]✓ Section '{section}' present[/green]")
@@ -338,7 +322,7 @@ def validate(config):
 
     # Initialize orchestrator
     try:
-        orchestrator = Orchestrator(config_path)
+        orchestrator = Orchestrator(str(config_path))
         console.print(f"\n[green]✓ Orchestrator initialized successfully[/green]")
         console.print(f"[green]✓ {len(orchestrator.adapters)} agents available[/green]")
     except Exception as e:
@@ -356,10 +340,8 @@ def version():
 
 
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='Path to configuration file')
-@click.option('--workflow', '-w', default='default',
-              help='Default workflow to use')
+@click.option("--config", "-c", type=click.Path(exists=True), help="Path to configuration file")
+@click.option("--workflow", "-w", default="default", help="Default workflow to use")
 def shell(config, workflow):
     """
     Start an interactive shell for multi-round conversations.
@@ -375,11 +357,11 @@ def shell(config, workflow):
     config_path = config or Path(__file__).parent / "config" / "agents.yaml"
 
     # Setup logging for shell
-    setup_logging('INFO', 'ai-orchestrator.log')
+    setup_logging("INFO", "ai-orchestrator.log")
 
     try:
         # Create and start interactive shell
-        interactive_shell = InteractiveShell(config_path)
+        interactive_shell = InteractiveShell(str(config_path) if config_path else None)
         interactive_shell.history.workflow = workflow
         interactive_shell.start()
     except KeyboardInterrupt:
@@ -390,10 +372,8 @@ def shell(config, workflow):
 
 
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='Path to configuration file')
-@click.option('--workflow', '-w', default='default',
-              help='Default workflow to use')
+@click.option("--config", "-c", type=click.Path(exists=True), help="Path to configuration file")
+@click.option("--workflow", "-w", default="default", help="Default workflow to use")
 def interactive(config, workflow):
     """
     Alias for 'shell' command - start interactive mode.
@@ -405,5 +385,5 @@ def interactive(config, workflow):
     ctx.invoke(shell, config=config, workflow=workflow)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

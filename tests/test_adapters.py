@@ -2,16 +2,18 @@
 Tests for AI agent adapters
 """
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from adapters import (
+    AgentCapability,
+    AgentResponse,
     BaseAdapter,
     ClaudeAdapter,
     CodexAdapter,
-    GeminiAdapter,
     CopilotAdapter,
-    AgentResponse,
-    AgentCapability
+    GeminiAdapter,
 )
 
 
@@ -20,12 +22,7 @@ class TestBaseAdapter:
 
     def test_initialization(self):
         """Test adapter initialization."""
-        config = {
-            'name': 'test_adapter',
-            'command': 'test_command',
-            'enabled': True,
-            'timeout': 60
-        }
+        config = {"name": "test_adapter", "command": "test_command", "enabled": True, "timeout": 60}
 
         class TestAdapter(BaseAdapter):
             def get_capabilities(self):
@@ -36,15 +33,15 @@ class TestBaseAdapter:
 
         adapter = TestAdapter(config)
 
-        assert adapter.name == 'test_adapter'
-        assert adapter.command == 'test_command'
+        assert adapter.name == "test_adapter"
+        assert adapter.command == "test_command"
         assert adapter.enabled is True
         assert adapter.timeout == 60
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_is_available(self, mock_run):
         """Test checking if an agent is available."""
-        config = {'name': 'test', 'command': 'test_cmd', 'enabled': True}
+        config = {"name": "test", "command": "test_cmd", "enabled": True}
 
         class TestAdapter(BaseAdapter):
             def get_capabilities(self):
@@ -65,7 +62,7 @@ class TestBaseAdapter:
 
     def test_format_task_prompt(self):
         """Test task prompt formatting."""
-        config = {'name': 'test', 'command': 'test', 'enabled': True}
+        config = {"name": "test", "command": "test", "enabled": True}
 
         class TestAdapter(BaseAdapter):
             def get_capabilities(self):
@@ -77,16 +74,13 @@ class TestBaseAdapter:
         adapter = TestAdapter(config)
 
         task = "Implement feature X"
-        context = {
-            'previous_output': 'Previous work',
-            'feedback': 'Fix this issue'
-        }
+        context = {"previous_output": "Previous work", "feedback": "Fix this issue"}
 
         prompt = adapter.format_task_prompt(task, context)
 
         assert task in prompt
-        assert 'Previous work' in prompt
-        assert 'Fix this issue' in prompt
+        assert "Previous work" in prompt
+        assert "Fix this issue" in prompt
 
 
 class TestClaudeAdapter:
@@ -94,7 +88,7 @@ class TestClaudeAdapter:
 
     def test_capabilities(self):
         """Test Claude capabilities."""
-        config = {'name': 'claude', 'command': 'claude', 'enabled': True}
+        config = {"name": "claude", "command": "claude", "enabled": True}
         adapter = ClaudeAdapter(config)
 
         capabilities = adapter.get_capabilities()
@@ -105,21 +99,21 @@ class TestClaudeAdapter:
 
     def test_build_claude_prompt(self):
         """Test Claude prompt building."""
-        config = {'name': 'claude', 'command': 'claude', 'enabled': True}
+        config = {"name": "claude", "command": "claude", "enabled": True}
         adapter = ClaudeAdapter(config)
 
         task = "Refactor this code"
         context = {
-            'role': 'refine',
-            'feedback': 'Improve error handling',
-            'implementation': 'def foo(): pass'
+            "role": "refine",
+            "feedback": "Improve error handling",
+            "implementation": "def foo(): pass",
         }
 
         prompt = adapter._build_claude_prompt(task, context)
 
-        assert 'refining code' in prompt.lower()
-        assert 'Improve error handling' in prompt
-        assert 'def foo(): pass' in prompt
+        assert "refining code" in prompt.lower()
+        assert "Improve error handling" in prompt
+        assert "def foo(): pass" in prompt
 
 
 class TestCodexAdapter:
@@ -127,7 +121,7 @@ class TestCodexAdapter:
 
     def test_capabilities(self):
         """Test Codex capabilities."""
-        config = {'name': 'codex', 'command': 'codex', 'enabled': True}
+        config = {"name": "codex", "command": "codex", "enabled": True}
         adapter = CodexAdapter(config)
 
         capabilities = adapter.get_capabilities()
@@ -137,20 +131,17 @@ class TestCodexAdapter:
 
     def test_build_codex_prompt(self):
         """Test Codex prompt building."""
-        config = {'name': 'codex', 'command': 'codex', 'enabled': True}
+        config = {"name": "codex", "command": "codex", "enabled": True}
         adapter = CodexAdapter(config)
 
         task = "Create a REST API"
-        context = {
-            'language': 'Python',
-            'framework': 'Flask'
-        }
+        context = {"language": "Python", "framework": "Flask"}
 
         prompt = adapter._build_codex_prompt(task, context)
 
-        assert 'Create a REST API' in prompt
-        assert 'Python' in prompt
-        assert 'Flask' in prompt
+        assert "Create a REST API" in prompt
+        assert "Python" in prompt
+        assert "Flask" in prompt
 
 
 class TestGeminiAdapter:
@@ -158,7 +149,7 @@ class TestGeminiAdapter:
 
     def test_capabilities(self):
         """Test Gemini capabilities."""
-        config = {'name': 'gemini', 'command': 'gemini-cli', 'enabled': True}
+        config = {"name": "gemini", "command": "gemini-cli", "enabled": True}
         adapter = GeminiAdapter(config)
 
         capabilities = adapter.get_capabilities()
@@ -168,23 +159,21 @@ class TestGeminiAdapter:
 
     def test_build_review_prompt(self):
         """Test Gemini review prompt building."""
-        config = {'name': 'gemini', 'command': 'gemini-cli', 'enabled': True}
+        config = {"name": "gemini", "command": "gemini-cli", "enabled": True}
         adapter = GeminiAdapter(config)
 
         task = "Review this code"
-        context = {
-            'implementation': 'def bar(): return 42'
-        }
+        context = {"implementation": "def bar(): return 42"}
 
         prompt = adapter._build_review_prompt(task, context)
 
-        assert 'expert code reviewer' in prompt.lower()
-        assert 'SOLID' in prompt
-        assert 'def bar(): return 42' in prompt
+        assert "expert code reviewer" in prompt.lower()
+        assert "SOLID" in prompt
+        assert "def bar(): return 42" in prompt
 
     def test_parse_review_feedback(self):
         """Test parsing review feedback."""
-        config = {'name': 'gemini', 'command': 'gemini-cli', 'enabled': True}
+        config = {"name": "gemini", "command": "gemini-cli", "enabled": True}
         adapter = GeminiAdapter(config)
 
         output = """
@@ -201,8 +190,8 @@ class TestGeminiAdapter:
         suggestions = adapter._parse_review_feedback(output)
 
         assert len(suggestions) > 0
-        assert any('error handling' in s.lower() for s in suggestions)
-        assert any('Critical' in s for s in suggestions)
+        assert any("error handling" in s.lower() for s in suggestions)
+        assert any("Critical" in s for s in suggestions)
 
 
 class TestCopilotAdapter:
@@ -210,7 +199,7 @@ class TestCopilotAdapter:
 
     def test_capabilities(self):
         """Test Copilot capabilities."""
-        config = {'name': 'copilot', 'command': 'gh', 'enabled': True}
+        config = {"name": "copilot", "command": "gh", "enabled": True}
         adapter = CopilotAdapter(config)
 
         capabilities = adapter.get_capabilities()
@@ -219,7 +208,7 @@ class TestCopilotAdapter:
 
     def test_extract_suggestions(self):
         """Test extracting Copilot suggestions."""
-        config = {'name': 'copilot', 'command': 'gh', 'enabled': True}
+        config = {"name": "copilot", "command": "gh", "enabled": True}
         adapter = CopilotAdapter(config)
 
         output = """
@@ -244,10 +233,7 @@ class TestAgentResponse:
 
     def test_basic_response(self):
         """Test basic response creation."""
-        response = AgentResponse(
-            success=True,
-            output="Test output"
-        )
+        response = AgentResponse(success=True, output="Test output")
 
         assert response.success is True
         assert response.output == "Test output"
@@ -260,11 +246,11 @@ class TestAgentResponse:
         response = AgentResponse(
             success=True,
             output="Output",
-            files_modified=['file1.py', 'file2.py'],
-            suggestions=['Suggestion 1', 'Suggestion 2'],
-            metadata={'key': 'value'}
+            files_modified=["file1.py", "file2.py"],
+            suggestions=["Suggestion 1", "Suggestion 2"],
+            metadata={"key": "value"},
         )
 
         assert len(response.files_modified) == 2
         assert len(response.suggestions) == 2
-        assert response.metadata['key'] == 'value'
+        assert response.metadata["key"] == "value"

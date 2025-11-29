@@ -49,20 +49,24 @@ class AsyncExecutor:
         for i, task, future in futures:
             try:
                 result = future.result(timeout=timeout)
-                results.append({
-                    "index": i,
-                    "success": True,
-                    "result": result,
-                    "error": None,
-                })
+                results.append(
+                    {
+                        "index": i,
+                        "success": True,
+                        "result": result,
+                        "error": None,
+                    }
+                )
             except Exception as e:
                 logger.error(f"Task {i} failed: {e}", exc_info=True)
-                results.append({
-                    "index": i,
-                    "success": False,
-                    "result": None,
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "index": i,
+                        "success": False,
+                        "result": None,
+                        "error": str(e),
+                    }
+                )
 
         return results
 
@@ -86,20 +90,24 @@ class AsyncExecutor:
         for i, task in enumerate(tasks):
             try:
                 result = task()
-                results.append({
-                    "index": i,
-                    "success": True,
-                    "result": result,
-                    "error": None,
-                })
+                results.append(
+                    {
+                        "index": i,
+                        "success": True,
+                        "result": result,
+                        "error": None,
+                    }
+                )
             except Exception as e:
                 logger.error(f"Task {i} failed: {e}", exc_info=True)
-                results.append({
-                    "index": i,
-                    "success": False,
-                    "result": None,
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "index": i,
+                        "success": False,
+                        "result": None,
+                        "error": str(e),
+                    }
+                )
 
                 if stop_on_error:
                     break

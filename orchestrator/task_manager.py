@@ -3,14 +3,15 @@ Task management and distribution.
 """
 
 import logging
-from typing import Dict, List, Any, Optional
-from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class TaskStatus(Enum):
     """Status of a task."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -21,6 +22,7 @@ class TaskStatus(Enum):
 @dataclass
 class Task:
     """Represents a task to be executed."""
+
     id: str
     description: str
     status: TaskStatus = TaskStatus.PENDING
@@ -79,11 +81,7 @@ class TaskManager:
         self.task_counter += 1
         task_id = f"task_{self.task_counter}"
 
-        task = Task(
-            id=task_id,
-            description=description,
-            metadata=metadata or {}
-        )
+        task = Task(id=task_id, description=description, metadata=metadata or {})
 
         self.tasks[task_id] = task
         self.logger.info(f"Created task: {task_id}")
@@ -96,10 +94,7 @@ class TaskManager:
 
     def get_tasks_by_status(self, status: TaskStatus) -> List[Task]:
         """Get all tasks with a specific status."""
-        return [
-            task for task in self.tasks.values()
-            if task.status == status
-        ]
+        return [task for task in self.tasks.values() if task.status == status]
 
     def get_pending_tasks(self) -> List[Task]:
         """Get all pending tasks."""
@@ -119,24 +114,24 @@ class TaskManager:
 
         if not all_tasks:
             return {
-                'total_tasks': 0,
-                'pending': 0,
-                'in_progress': 0,
-                'completed': 0,
-                'failed': 0,
-                'average_duration': 0
+                "total_tasks": 0,
+                "pending": 0,
+                "in_progress": 0,
+                "completed": 0,
+                "failed": 0,
+                "average_duration": 0,
             }
 
         completed_tasks = [t for t in all_tasks if t.status == TaskStatus.COMPLETED]
         durations = [t.duration() for t in completed_tasks if t.duration() is not None]
 
         return {
-            'total_tasks': len(all_tasks),
-            'pending': len([t for t in all_tasks if t.status == TaskStatus.PENDING]),
-            'in_progress': len([t for t in all_tasks if t.status == TaskStatus.IN_PROGRESS]),
-            'completed': len(completed_tasks),
-            'failed': len([t for t in all_tasks if t.status == TaskStatus.FAILED]),
-            'average_duration': sum(durations) / len(durations) if durations else 0
+            "total_tasks": len(all_tasks),
+            "pending": len([t for t in all_tasks if t.status == TaskStatus.PENDING]),
+            "in_progress": len([t for t in all_tasks if t.status == TaskStatus.IN_PROGRESS]),
+            "completed": len(completed_tasks),
+            "failed": len([t for t in all_tasks if t.status == TaskStatus.FAILED]),
+            "average_duration": sum(durations) / len(durations) if durations else 0,
         }
 
     def clear_completed(self):

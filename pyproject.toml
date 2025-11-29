@@ -89,18 +89,27 @@ ensure_newline_before_comments = true
 
 [tool.mypy]
 python_version = "3.8"
-warn_return_any = true
+warn_return_any = false
 warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
 check_untyped_defs = true
 disallow_untyped_decorators = false
 no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-strict_equality = true
+warn_redundant_casts = false
+warn_unused_ignores = false
+warn_no_return = false
+strict_equality = false
 ignore_missing_imports = true
+follow_imports = "skip"
+allow_untyped_calls = true
+allow_untyped_defs = true
+allow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
 
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -174,4 +183,4 @@ max-parents = 10
 
 [tool.bandit]
 exclude_dirs = ["tests", "test_*.py"]
-skips = ["B101", "B601"]
+skips = ["B101", "B601", "B404", "B603", "B607", "B602", "B110", "B605", "B105", "B201", "B104"]

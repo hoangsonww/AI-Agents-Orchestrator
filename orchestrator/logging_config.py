@@ -152,6 +152,7 @@ def log_execution(
     Returns:
         Decorated function
     """
+
     def decorator(func: Any) -> Any:
         import functools
 

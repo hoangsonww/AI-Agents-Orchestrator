@@ -3,15 +3,16 @@ Workflow management for AI agent orchestration.
 """
 
 import logging
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, List
 
-from adapters import BaseAdapter, AgentResponse
+from adapters import AgentResponse, BaseAdapter
 
 
 @dataclass
 class WorkflowStep:
     """Represents a single step in a workflow."""
+
     agent_name: str
     task_type: str
     adapter: BaseAdapter
@@ -32,31 +33,28 @@ class WorkflowStep:
 
         # Add step-specific context
         step_context = context.copy()
-        step_context.update({
-            'role': self.task_type,
-            'agent': self.agent_name
-        })
+        step_context.update({"role": self.task_type, "agent": self.agent_name})
 
         # Execute using the adapter
         return self.adapter.execute_task(task, step_context)
 
     def _build_task_description(self, context: Dict[str, Any]) -> str:
         """Build task description based on step type and context."""
-        base_task = context.get('task', '')
+        base_task = context.get("task", "")
 
-        if self.task_type == 'implement':
+        if self.task_type == "implement":
             return f"Implement the following: {base_task}"
 
-        elif self.task_type == 'review':
+        elif self.task_type == "review":
             return f"Review the implementation of: {base_task}"
 
-        elif self.task_type == 'refine':
+        elif self.task_type == "refine":
             return f"Refine the implementation based on review feedback for: {base_task}"
 
-        elif self.task_type == 'test':
+        elif self.task_type == "test":
             return f"Write tests for: {base_task}"
 
-        elif self.task_type == 'document':
+        elif self.task_type == "document":
             return f"Document the implementation of: {base_task}"
 
         else:
@@ -98,17 +96,13 @@ class WorkflowEngine:
                 results.append(response)
 
                 # Update context with response for next step
-                context['previous_response'] = response
-                context['previous_output'] = response.output
+                context["previous_response"] = response
+                context["previous_output"] = response.output
 
             except Exception as e:
                 self.logger.error(f"Step {i+1} failed: {e}", exc_info=True)
                 # Create error response
-                error_response = AgentResponse(
-                    success=False,
-                    output="",
-                    error=str(e)
-                )
+                error_response = AgentResponse(success=False, output="", error=str(e))
                 results.append(error_response)
 
         return results
@@ -116,7 +110,7 @@ class WorkflowEngine:
     def get_progress(self) -> Dict[str, Any]:
         """Get current workflow progress."""
         return {
-            'current_step': self.current_step,
-            'total_steps': len(self.steps),
-            'progress_percent': (self.current_step / len(self.steps) * 100) if self.steps else 0
+            "current_step": self.current_step,
+            "total_steps": len(self.steps),
+            "progress_percent": (self.current_step / len(self.steps) * 100) if self.steps else 0,
         }

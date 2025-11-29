@@ -5,14 +5,14 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional
 
 from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
     Info,
     Summary,
-    CollectorRegistry,
     generate_latest,
-    CONTENT_TYPE_LATEST,
 )
 
 
@@ -186,6 +186,7 @@ def track_execution_time(metric_name: str, labels: Optional[Dict[str, str]] = No
     Returns:
         Decorated function
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -212,6 +213,7 @@ def track_task_execution(workflow: str) -> Callable:
     Returns:
         Decorated function
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:

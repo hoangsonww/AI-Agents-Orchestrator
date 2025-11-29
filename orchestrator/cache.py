@@ -166,7 +166,7 @@ class FileCache:
             return None
 
         try:
-            with open(cache_path, "r") as f:
+            with open(cache_path) as f:
                 data = json.load(f)
 
             entry = CacheEntry(data["value"], data.get("ttl"))
@@ -177,7 +177,7 @@ class FileCache:
                 return None
 
             return entry.value
-        except (json.JSONDecodeError, KeyError, IOError):
+        except (json.JSONDecodeError, KeyError, OSError):
             return None
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
@@ -196,7 +196,7 @@ class FileCache:
         try:
             with open(cache_path, "w") as f:
                 json.dump(data, f)
-        except (TypeError, IOError):
+        except (TypeError, OSError):
             # Value not JSON serializable or IO error
             pass
 
@@ -245,6 +245,7 @@ def cache_result(
     Returns:
         Decorated function
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:

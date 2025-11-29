@@ -106,9 +106,7 @@ class ValidationError(OrchestratorError):
 class RateLimitError(OrchestratorError):
     """Raised when rate limit is exceeded."""
 
-    def __init__(
-        self, limit: int, window: int, details: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def __init__(self, limit: int, window: int, details: Optional[Dict[str, Any]] = None) -> None:
         """Initialize rate limit error."""
         message = f"Rate limit exceeded: {limit} requests per {window} seconds"
         super().__init__(
