@@ -13,4 +13,4 @@ Call `ai_collaboration.status` for the current repository and report:
 - latest checkpoint and recent failures;
 - the most useful next action supported by the data.
 
-Keep this operation read-only. If there is no active task, say so and give the exact start command: `bin/ai-collaboration task start "<title>"`.
+Keep this operation read-only. If there is no active task, say so and offer to call `ai_collaboration.start_task` with the user's title.

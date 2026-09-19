@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 import sys
-import traceback
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 from . import __version__
 from .service import CollaborationService
 
 ToolHandler = Callable[[Mapping[str, Any]], Any]
+SUPPORTED_PROTOCOL_VERSIONS = ("2024-11-05", "2025-03-26", "2025-06-18")
+LATEST_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[-1]
 
 
 class MCPServer:
@@ -175,9 +176,16 @@ class MCPServer:
             return None
         try:
             if method == "initialize":
-                requested = message.get("params", {}).get("protocolVersion", "2024-11-05")
+                requested = message.get("params", {}).get(
+                    "protocolVersion", LATEST_PROTOCOL_VERSION
+                )
+                negotiated = (
+                    requested
+                    if requested in SUPPORTED_PROTOCOL_VERSIONS
+                    else LATEST_PROTOCOL_VERSION
+                )
                 result = {
-                    "protocolVersion": requested,
+                    "protocolVersion": negotiated,
                     "capabilities": {"tools": {"listChanged": False}},
                     "serverInfo": {"name": "ai-collaboration", "version": __version__},
                 }
@@ -219,8 +227,8 @@ class MCPServer:
         except (KeyError, ValueError) as error:
             return self._error(request_id, -32602, str(error))
         except Exception as error:  # Keep protocol output valid; diagnostics stay on stderr.
-            traceback.print_exc(file=sys.stderr)
-            return self._error(request_id, -32603, "Internal error: %s" % error)
+            print("MCP handler failed: %s" % type(error).__name__, file=sys.stderr)
+            return self._error(request_id, -32603, "Internal error")
 
     @staticmethod
     def _error(request_id: Any, code: int, message: str) -> Dict[str, Any]:

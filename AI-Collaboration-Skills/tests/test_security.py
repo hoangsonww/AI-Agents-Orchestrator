@@ -34,6 +34,12 @@ def test_redact_private_key_block() -> None:
     assert redact(secret) == REDACTED
 
 
+def test_redact_basic_authorization_credentials() -> None:
+    assert redact("Authorization: Basic dXNlcjpwYXNzd29yZA==") == (
+        "Authorization: Basic [REDACTED]"
+    )
+
+
 def test_bounded_json_truncates_large_payload() -> None:
     encoded = bounded_json({"output": "x" * 5000}, 1024)
     decoded = json.loads(encoded)

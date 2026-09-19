@@ -77,7 +77,9 @@ class CollaborationService:
             safe_payload, "tool_input", "toolInput", "tool_args", "toolArgs", default={}
         )
         command = self._command(tool_input, safe_payload)
-        files_read, files_written = self._files(event_type, str(tool or ""), tool_input, payload)
+        files_read, files_written = self._files(
+            event_type, str(tool or ""), tool_input, safe_payload
+        )
         exit_code = self._exit_code(payload)
         summary = self._summary(event_type, tool, command, exit_code, safe_payload)
         normalized = {

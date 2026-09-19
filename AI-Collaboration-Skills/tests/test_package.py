@@ -44,6 +44,14 @@ def test_each_provider_hook_invokes_shared_ingest_script() -> None:
         assert provider in text
 
 
+def test_gemini_hooks_have_bounded_timeouts() -> None:
+    groups = load("hooks/hooks.json")["hooks"].values()
+    commands = [hook for group in groups for entry in group for hook in entry["hooks"]]
+
+    assert len(commands) == 5
+    assert all(command["timeout"] == 10000 for command in commands)
+
+
 def test_skills_are_complete_and_portable() -> None:
     skills = sorted((ROOT / "skills").glob("*/SKILL.md"))
     assert len(skills) == 5

@@ -31,9 +31,9 @@ def snapshot(cwd: Path) -> Dict[str, object]:
             code = entry[:2]
             path = entry[3:] if len(entry) > 3 else ""
             if code[:1] in {"R", "C"} and index < len(entries):
-                destination = entries[index]
+                previous_path = entries[index]
                 index += 1
-                changed.append({"status": code, "path": destination, "previous_path": path})
+                changed.append({"status": code, "path": path, "previous_path": previous_path})
             else:
                 changed.append({"status": code, "path": path})
     return {

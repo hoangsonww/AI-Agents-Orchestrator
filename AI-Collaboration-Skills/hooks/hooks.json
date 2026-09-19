@@ -6,7 +6,8 @@
           {
             "name": "ai-collaboration-session-start",
             "type": "command",
-            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event SessionStart"
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event SessionStart",
+            "timeout": 10000
           }
         ]
       }
@@ -17,7 +18,8 @@
           {
             "name": "ai-collaboration-before-agent",
             "type": "command",
-            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event BeforeAgent"
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event BeforeAgent",
+            "timeout": 10000
           }
         ]
       }
@@ -29,7 +31,8 @@
           {
             "name": "ai-collaboration-after-tool",
             "type": "command",
-            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event AfterTool"
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event AfterTool",
+            "timeout": 10000
           }
         ]
       }
@@ -40,7 +43,8 @@
           {
             "name": "ai-collaboration-after-agent",
             "type": "command",
-            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event AfterAgent"
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event AfterAgent",
+            "timeout": 10000
           }
         ]
       }
@@ -51,7 +55,8 @@
           {
             "name": "ai-collaboration-session-end",
             "type": "command",
-            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event SessionEnd"
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event SessionEnd",
+            "timeout": 10000
           }
         ]
       }

@@ -12,6 +12,7 @@ _SENSITIVE_KEY = re.compile(
     re.IGNORECASE,
 )
 _BEARER = re.compile(r"(?i)\b(bearer\s+)[A-Za-z0-9._~+/=-]{8,}")
+_BASIC = re.compile(r"(?i)\b(basic\s+)[A-Za-z0-9+/=]{4,}")
 _PEM = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL
 )
@@ -56,6 +57,7 @@ def redact(value: Any) -> Any:
     if isinstance(value, str):
         redacted = _PEM.sub(REDACTED, value)
         redacted = _BEARER.sub(r"\1" + REDACTED, redacted)
+        redacted = _BASIC.sub(r"\1" + REDACTED, redacted)
         redacted = _NAMED_SECRET.sub(r"\1\2" + REDACTED, redacted)
         return _TOKEN_LITERAL.sub(REDACTED, redacted)
     if value is None or isinstance(value, (bool, int, float)):

@@ -70,6 +70,23 @@ def test_ingest_redacts_normalized_command_and_summary(tmp_path: Path) -> None:
     assert "[REDACTED]" in result["command"]
 
 
+def test_ingest_redacts_file_metadata(tmp_path: Path) -> None:
+    repo = git_repo(tmp_path / "repo")
+    app = service(tmp_path)
+    result = app.ingest(
+        "claude",
+        "Read",
+        {
+            "cwd": str(repo),
+            "session_id": "path-secret-regression",
+            "tool_name": "Read",
+            "file_path": "token=secret-token-value",
+        },
+    )
+
+    assert result["files_read"] == ["token=[REDACTED]"]
+
+
 def test_provider_field_variants_and_test_history(tmp_path: Path) -> None:
     repo = git_repo(tmp_path / "repo")
     app = service(tmp_path)
@@ -108,3 +125,13 @@ def test_changed_files_reads_current_tree(tmp_path: Path) -> None:
     changed = app.changed_files(str(repo))["changed_files"]
 
     assert changed == [{"status": " M", "path": "README.md"}]
+
+
+def test_changed_files_preserves_rename_destination(tmp_path: Path) -> None:
+    repo = git_repo(tmp_path / "repo")
+    subprocess.run(["git", "-C", str(repo), "mv", "README.md", "RENAMED.md"], check=True)
+    app = service(tmp_path)
+
+    assert app.changed_files(str(repo))["changed_files"] == [
+        {"status": "R ", "path": "RENAMED.md", "previous_path": "README.md"}
+    ]

@@ -27,8 +27,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     arguments = parser.parse_args(argv)
     try:
         response = run(arguments.provider, arguments.event, sys.stdin.read())
-    except Exception as error:  # Hooks must never interrupt the host agent.
-        print("AI Collaboration capture skipped: %s" % error, file=sys.stderr)
+    except Exception:  # Hooks must never interrupt the host agent.
+        print("AI Collaboration capture skipped.", file=sys.stderr)
         response = {}
     sys.stdout.write(json.dumps(response, separators=(",", ":")) + "\n")
     return 0

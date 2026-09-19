@@ -48,6 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     events = subparsers.add_parser("events")
     events.add_argument("--task-id")
     events.add_argument("--session-id")
+    events.add_argument("--cwd")
     events.add_argument("--limit", type=int, default=100)
     events.add_argument("--payload", action="store_true")
 
@@ -104,8 +105,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 task_id = task["id"]
             result = service.store.list_sessions(task_id, arguments.limit)
         elif arguments.command == "events":
+            task_id = arguments.task_id
+            if not task_id:
+                task = service.current_task(arguments.cwd)
+                if not task:
+                    raise ValueError("no active task")
+                task_id = task["id"]
             result = service.store.list_events(
-                task_id=arguments.task_id,
+                task_id=task_id,
                 session_id=arguments.session_id,
                 limit=arguments.limit,
                 include_payload=arguments.payload,
