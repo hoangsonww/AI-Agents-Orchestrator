@@ -21,6 +21,7 @@
   - [Obsidian Vault Export](#obsidian-vault-export)
   - [Graphify — Code Knowledge Graph Engine](#graphify--code-knowledge-graph-engine)
 - [Agentic Infrastructure](#agentic-infrastructure)
+- [AI Collaboration](#ai-collaboration)
 - [Performance Considerations](#performance-considerations)
 - [Scalability](#scalability)
 - [Optional: MCP Integration Layer](#optional-mcp-integration-layer)
@@ -1639,6 +1640,24 @@ flowchart LR
 | `.codex/agents/*.toml` | Codex agent role definitions |
 
 📚 **See [AGENTIC_INFRA.md](AGENTIC_INFRA.md) for complete documentation.**
+
+## AI Collaboration
+
+`AI-Collaboration-Skills/` is a third independent runtime boundary. It is an installable Agent Plugins 1.0 package for task continuity across Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot CLI.
+
+```mermaid
+flowchart LR
+    Hosts[Claude / Codex / Cursor / Gemini / Copilot] --> Hooks[Native lifecycle hooks]
+    Hooks --> Normalize[Provider-neutral normalization]
+    Normalize --> Store[(SQLite + compressed objects)]
+    Store --> CLI[Standalone CLI]
+    Store --> MCP[Standalone MCP tools]
+    Store --> Skills[Portable Agent Skills]
+```
+
+The package has zero imports from `orchestrator/`, `agentic_team/`, and `mcp_server/`. Its passive hooks capture events without model calls; its active skills and MCP tools retrieve only the context an incoming agent requests. The shared store defaults to `~/.ai-collaboration`, so sessions from different hosts resolve to the same repository task.
+
+Host-specific manifests exist only to map native hook and installation formats. The canonical portable surface remains `plugin.json`, `mcp.json`, and `skills/`. See [`AI-Collaboration-Skills/ARCHITECTURE.md`](AI-Collaboration-Skills/ARCHITECTURE.md) for the event schema, host mapping, storage behavior, and failure model.
 
 ## Performance Considerations
 

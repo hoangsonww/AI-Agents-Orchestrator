@@ -1,0 +1,9 @@
+interface:
+  display_name: "Inspect History"
+  short_description: "Search prior agent activity and outcomes"
+  default_prompt: "Use $inspect-history to investigate prior work on this task."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "ai-collaboration"
+      description: "Local AI Collaboration continuity tools"

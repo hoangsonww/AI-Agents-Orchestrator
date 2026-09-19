@@ -1,0 +1,9 @@
+interface:
+  display_name: "Collaboration Status"
+  short_description: "Show task, session, Git, and checkpoint status"
+  default_prompt: "Use $collaboration-status to summarize the active continuity task."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "ai-collaboration"
+      description: "Local AI Collaboration continuity tools"

@@ -4,6 +4,20 @@ The Skills Library provides reusable skill definitions that help AI agents accom
 
 ## Available Skills
 
+### Portable AI Collaboration Skills
+
+The standalone [`AI-Collaboration-Skills/`](../AI-Collaboration-Skills/README.md) plugin adds Agent Skills that install across Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot CLI.
+
+| Skill | Purpose | Location |
+|---|---|---|
+| `resume-task` | Verify and continue a task from another agent | `AI-Collaboration-Skills/skills/resume-task/` |
+| `inspect-history` | Search prior agent activity without changing files | `AI-Collaboration-Skills/skills/inspect-history/` |
+| `collaboration-status` | Report task, session, Git, and checkpoint state | `AI-Collaboration-Skills/skills/collaboration-status/` |
+| `create-checkpoint` | Save a durable task milestone and next action | `AI-Collaboration-Skills/skills/create-checkpoint/` |
+| `handoff-task` | Prepare verified context for the next agent | `AI-Collaboration-Skills/skills/handoff-task/` |
+
+These portable skills are separate from the project-specific `.claude/skills/` library below and use the plugin's local MCP tools.
+
 ### Development Skills
 
 | Skill | Description | Location |

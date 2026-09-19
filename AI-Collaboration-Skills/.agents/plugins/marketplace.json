@@ -1,0 +1,20 @@
+{
+  "name": "ai-collaboration",
+  "interface": {
+    "displayName": "AI Collaboration"
+  },
+  "plugins": [
+    {
+      "name": "ai-collaboration",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

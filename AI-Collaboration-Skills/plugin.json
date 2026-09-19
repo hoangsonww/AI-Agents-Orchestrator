@@ -1,0 +1,44 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ai-collaboration",
+  "version": "0.1.0",
+  "description": "Preserve coding-task context across Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot CLI.",
+  "author": {
+    "name": "AI Coding Tools Collaborative Contributors",
+    "url": "https://github.com/hoangsonww/AI-Agents-Orchestrator"
+  },
+  "homepage": "https://github.com/hoangsonww/AI-Agents-Orchestrator/tree/main/AI-Collaboration-Skills",
+  "repository": "https://github.com/hoangsonww/AI-Agents-Orchestrator",
+  "license": "MIT",
+  "keywords": [
+    "agent-collaboration",
+    "handoff",
+    "task-continuity",
+    "mcp",
+    "agent-skills"
+  ],
+  "extensions": {
+    "com.openai": {
+      "hooks": "./adapters/codex/hooks.json",
+      "interface": {
+        "displayName": "AI Collaboration",
+        "shortDescription": "Continue coding tasks across AI agents.",
+        "longDescription": "Captures local agent activity into a private SQLite event store and exposes deterministic handoff context through skills, a CLI, and MCP tools.",
+        "developerName": "AI Coding Tools Collaborative Contributors",
+        "category": "Productivity",
+        "capabilities": [
+          "Local storage",
+          "Task continuity",
+          "MCP tools",
+          "Lifecycle hooks"
+        ],
+        "defaultPrompt": [
+          "Resume the active coding task with AI Collaboration.",
+          "Show the current AI Collaboration status.",
+          "Create a handoff checkpoint for this task."
+        ],
+        "brandColor": "#4F46E5"
+      }
+    }
+  }
+}

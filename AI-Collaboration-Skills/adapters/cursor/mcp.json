@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ai-collaboration": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "${CURSOR_PLUGIN_ROOT}/bin/ai-collaboration-mcp"
+      ],
+      "cwd": "${CURSOR_PLUGIN_ROOT}"
+    }
+  }
+}

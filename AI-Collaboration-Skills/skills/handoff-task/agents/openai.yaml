@@ -1,0 +1,9 @@
+interface:
+  display_name: "Handoff Task"
+  short_description: "Prepare verified context for the next AI agent"
+  default_prompt: "Use $handoff-task to prepare this work for another coding agent."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "ai-collaboration"
+      description: "Local AI Collaboration continuity tools"

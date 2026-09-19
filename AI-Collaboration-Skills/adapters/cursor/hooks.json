@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/hooks/ingest.py\" --provider cursor --event sessionStart",
+        "timeout": 10
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/hooks/ingest.py\" --provider cursor --event beforeSubmitPrompt",
+        "timeout": 10
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/hooks/ingest.py\" --provider cursor --event postToolUse",
+        "timeout": 10
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/hooks/ingest.py\" --provider cursor --event postToolUseFailure",
+        "timeout": 10
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/hooks/ingest.py\" --provider cursor --event afterFileEdit",
+        "timeout": 10
+      }
+    ],
+    "stop": [
+      {
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/hooks/ingest.py\" --provider cursor --event stop",
+        "timeout": 10,
+        "loop_limit": 1
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "python3 \"${CURSOR_PLUGIN_ROOT}/hooks/ingest.py\" --provider cursor --event sessionEnd",
+        "timeout": 10
+      }
+    ]
+  }
+}

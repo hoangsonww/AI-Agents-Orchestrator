@@ -1,0 +1,15 @@
+{
+  "name": "ai-collaboration",
+  "version": "0.1.0",
+  "description": "Preserve coding-task context across AI coding agents.",
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "ai-collaboration": {
+      "command": "python3",
+      "args": [
+        "${extensionPath}/bin/ai-collaboration-mcp"
+      ],
+      "cwd": "${extensionPath}"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "ai-collaboration",
+  "displayName": "AI Collaboration",
+  "version": "0.1.0",
+  "description": "Preserve coding-task context across AI coding agents.",
+  "author": {
+    "name": "AI Coding Tools Collaborative Contributors"
+  },
+  "homepage": "https://github.com/hoangsonww/AI-Agents-Orchestrator/tree/main/AI-Collaboration-Skills",
+  "repository": "https://github.com/hoangsonww/AI-Agents-Orchestrator",
+  "license": "MIT",
+  "keywords": [
+    "collaboration",
+    "handoff",
+    "continuity"
+  ],
+  "skills": "./skills/",
+  "hooks": "./adapters/cursor/hooks.json",
+  "mcpServers": "./adapters/cursor/mcp.json"
+}
