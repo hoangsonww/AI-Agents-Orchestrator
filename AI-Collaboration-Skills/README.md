@@ -92,6 +92,7 @@ Hooks attach later sessions and events to the active task for that Git repositor
 Useful CLI commands:
 
 ```bash
+bin/ai-collaboration --version
 bin/ai-collaboration status
 bin/ai-collaboration context
 bin/ai-collaboration sessions

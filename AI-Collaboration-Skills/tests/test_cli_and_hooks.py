@@ -50,6 +50,13 @@ def test_cli_returns_error_for_empty_search(tmp_path: Path) -> None:
     assert "must not be empty" in result.stderr
 
 
+def test_cli_reports_packaged_version(tmp_path: Path) -> None:
+    result = run_cli(tmp_path / "data", "--version")
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == "ai-collaboration 0.1.0"
+
+
 def test_cli_events_defaults_to_active_task(tmp_path: Path) -> None:
     home = tmp_path / "data"
     first = json.loads(run_cli(home, "task", "start", "First", "--cwd", str(tmp_path)).stdout)

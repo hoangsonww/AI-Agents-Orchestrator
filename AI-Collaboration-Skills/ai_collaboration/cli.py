@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
+from . import __version__
 from .service import CollaborationService
 
 
@@ -19,6 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="ai-collaboration", description="Cross-agent task continuity"
     )
+    parser.add_argument("--version", action="version", version="%(prog)s " + __version__)
     parser.add_argument("--home", type=Path, help="Override AI Collaboration data directory")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
