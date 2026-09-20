@@ -59,7 +59,7 @@
 
 <div align="center">
 
-**Five independent systems — an AI Orchestrator, an Agentic Team runtime, an MCP Server, a Context Dashboard, and Graphify (project-to-graph intelligence engine) — that coordinate cloud and local AI coding assistants (Claude, Codex, Gemini, Copilot, Ollama, llama.cpp) to collaborate on software development tasks. Includes enterprise-grade agentic infrastructure with specialized agents, skills library, 34+ MCP tools, project-scoped graph-based context memory, and Graphify's 22-language code analysis with persistent queryable knowledge graphs, interactive visualization, and REST API.**
+**Six independent systems — an AI Orchestrator, an Agentic Team runtime, AI Collaboration task continuity, an MCP Server, a Context Dashboard, and Graphify (project-to-graph intelligence engine) — that help Claude, Codex, Cursor, Gemini, Copilot, Ollama, and llama.cpp collaborate on software development tasks.**
 
 [Overview](#overview) | [Architecture](#architecture) | [Agentic Infrastructure](#agentic-infrastructure) | [System Comparison](#system-comparison) | [Features](#feature-highlights) | [Quick Start](#quick-start) | [Project Structure](#project-structure) | [Configuration](#configuration) | [Deployment](#deployment) | [Testing](#testing) | [MCP Server](#mcp-server-optional----model-context-protocol)
 
@@ -69,13 +69,14 @@
 
 ## Overview
 
-AI Coding Tools ships **five independent systems** in a single repository:
+AI Coding Tools ships **six independent systems** in a single repository:
 
 1. The **Orchestrator** runs step-based workflows where AI agents execute tasks in sequence (implement, review, refine).
 2. The **Agentic Team** runs a free-communication runtime where role-based agents (Project Manager, Architect, Developer, QA, DevOps) discuss a task in turns until the team lead declares the work complete.
 3. **Graphify** turns any project directory into a queryable knowledge graph — classes, functions, imports, call graphs, and design rationale stored in a local SQLite database with FTS5 search.
-4. The **MCP Server** bridges both engines to IDE-based AI assistants.
-5. The **Context Dashboard** visualizes the graph memory. Each system carries its own adapters, configuration, UI, and CLI — they share zero code and zero imports.
+4. **AI Collaboration** is a separately installable, zero-dependency task-continuity plugin for Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot CLI. Native lifecycle hooks capture prompts, tool activity, Git state, tests, and checkpoints into a private local store; portable skills and a standalone MCP server let the next agent resume with focused, deterministic context.
+5. The **MCP Server** bridges both engines to IDE-based AI assistants.
+6. The **Context Dashboard** visualizes the graph memory. Each runtime carries its own adapters, configuration, UI, and CLI; AI Collaboration is also standalone and imports from neither runtime.
 
 Beyond the core engines, we provide a complete **Agentic Infrastructure** that empowers AI agents:
 
@@ -87,6 +88,9 @@ Beyond the core engines, we provide a complete **Agentic Infrastructure** that e
 
 > [!TIP]
 > Quickstart with the Orchestrator for structured workflows, or the Agentic Team for open-ended collaboration. Both systems benefit from the shared agentic infrastructure and context memory. See [QUICKSTART.md](QUICKSTART.md) for quick setup instructions to get started in ~2 minutes. Or, see [#quick-start](#quick-start) below for a detailed walkthrough.
+
+> [!TIP]
+> **Do not want to set up the full platform?** Install only [`AI-Collaboration-Skills/`](AI-Collaboration-Skills/README.md). It needs no project Python dependencies, web UI, orchestrator configuration, or hosted service—just Python 3.8+, Git, and a supported coding agent. Use it to move an in-progress task between agents, recover work after a context limit, or keep a durable local audit trail while continuing to work directly in your preferred CLI or editor.
 
 ## Agentic Infrastructure
 
@@ -416,6 +420,13 @@ graph TD
             A_FALLBACK["Fallback + Offline"]
             A_CONF["orchestrator/config/agents.yaml"]
         end
+
+        subgraph Collaboration["AI-Collaboration-Skills/ — standalone"]
+            C_HOOKS["Native Lifecycle Hooks"]
+            C_CORE["Provider-neutral Core<br/>Tasks | Sessions | Events"]
+            C_STORE["Private Local State<br/>SQLite + gzip Objects"]
+            C_ACTIVE["Resume Surfaces<br/>Skills | CLI | 10 MCP Tools"]
+        end
     end
 
     O_CLI --> O_CORE
@@ -435,9 +446,18 @@ graph TD
     A_ADAPT --> ExtCloud
     A_ADAPT --> ExtLocal
 
+    ExtCloud --> C_HOOKS
+    CursorIDE["Cursor IDE"] --> C_HOOKS
+    C_HOOKS --> C_CORE
+    C_CORE --> C_STORE
+    C_STORE --> C_ACTIVE
+
     style Orchestrator fill:#1a1a2e,stroke:#16213e,color:#e0e0e0
     style AgenticTeam fill:#1a2e1a,stroke:#162e16,color:#e0e0e0
+    style Collaboration fill:#2e241a,stroke:#4a321f,color:#e0e0e0
 ```
+
+The diagram shows co-location, not a runtime dependency: AI Collaboration observes supported agent hosts directly and writes only to its own local store. It does not call into the Orchestrator or Agentic Team, and neither execution runtime needs the plugin installed.
 
 ### Orchestrator Workflow Execution
 
@@ -589,7 +609,20 @@ graph LR
 
 ## System Comparison
 
-The two systems serve different collaboration models. Choose based on your use case.
+Each top-level system is independently useful. Choose the smallest runtime that solves the problem:
+
+| Need | Best fit | Why |
+|---|---|---|
+| Run a repeatable multi-agent implementation/review pipeline | **Orchestrator** | Executes ordered or dynamically planned workflow steps through configured adapters |
+| Let role-based agents discuss a problem until a lead accepts the result | **Agentic Team** | Provides turn-based, free-form team communication and lead-gated completion |
+| Continue the same coding task across Claude, Codex, Cursor, Gemini, or Copilot | **AI Collaboration** | Installs directly into agent hosts and preserves local task history without either runtime |
+| Build a searchable structural model of a repository | **Graphify** | Extracts code entities and relationships into a queryable knowledge graph |
+| Expose orchestrator and project-analysis operations to MCP clients | **MCP Server** | Publishes the repository's 34+ automation and analysis tools |
+| Explore graph memory visually | **Context Dashboard** | Aggregates the independent runtime context stores into an interactive UI |
+
+### Orchestrator vs. Agentic Team
+
+The two execution runtimes serve different collaboration models:
 
 | Dimension | Orchestrator (`orchestrator/`) | Agentic Team (`agentic_team/`) |
 |---|---|---|
@@ -635,6 +668,30 @@ The two systems serve different collaboration models. Choose based on your use c
 | **Fallback** | Independent fallback manager and offline detector |
 | **Configuration** | Separate `agents.yaml` with `agentic_team.roles` section for role-to-agent mapping |
 
+### AI Collaboration (`AI-Collaboration-Skills/`)
+
+AI Collaboration is for developers who already work inside one or more coding agents and want continuity without adopting a new orchestration runtime. It can capture work passively during ordinary agent sessions, then expose only the relevant history when another agent resumes the task.
+
+| Category | Features |
+|---|---|
+| **Continuity** | Tasks, provider sessions, normalized events, checkpoints, test history, and live Git state |
+| **Hosts** | Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot CLI |
+| **Portable layer** | Agent Plugins 1.0 manifest, five Agent Skills, and ten MCP tools |
+| **Passive capture** | Host-native lifecycle hooks with fail-open behavior and no model invocation |
+| **Storage** | Private local SQLite store plus SHA-256 content-addressed gzip objects |
+| **Privacy** | Recursive credential redaction, payload size bounds, no network service |
+| **Boundary** | Zero imports from `orchestrator/`, `agentic_team/`, or the root MCP server |
+
+Typical uses include:
+
+- hand off implementation from Claude Code to Codex for debugging, then to Cursor for UI work;
+- recover the current task, changed files, last checkpoint, and failing tests after a context-window reset;
+- search prior tool activity without injecting an entire transcript into the next model context;
+- create deliberate checkpoints before switching agents, machines, or work sessions;
+- retain a private, inspectable local event history with no hosted synchronization service.
+
+See [`AI-Collaboration-Skills/README.md`](AI-Collaboration-Skills/README.md) for installation and usage.
+
 ### Graphify (`graphify/`)
 
 | Category | Features |
@@ -649,6 +706,28 @@ The two systems serve different collaboration models. Choose based on your use c
 | **Security** | Path traversal protection, input sanitization, bounded parameters, no debug mode |
 
 ## Quick Start
+
+### Use AI Collaboration Only (Minimal Setup)
+
+If you want cross-agent continuity rather than a complete orchestration platform, use the standalone plugin directly. It has no dependency on the root `requirements.txt`.
+
+```bash
+git clone https://github.com/hoangsonww/AI-Agents-Orchestrator.git
+cd AI-Agents-Orchestrator
+
+# Example: install into Codex from the local plugin marketplace
+codex plugin marketplace add ./AI-Collaboration-Skills
+codex plugin add ai-collaboration@ai-collaboration
+
+# Start a continuity task from the repository you are editing
+cd /path/to/your-project
+/path/to/AI-Agents-Orchestrator/AI-Collaboration-Skills/bin/ai-collaboration \
+  task start "Implement account recovery"
+```
+
+The plugin begins recording supported lifecycle events locally. Open another supported agent in the same repository and invoke the `resume-task` skill or call `ai_collaboration.get_context`; both agents resolve the same active task from `~/.ai-collaboration/`.
+
+Claude Code, Cursor, Gemini CLI, and GitHub Copilot CLI installation commands are documented in [`AI-Collaboration-Skills/README.md`](AI-Collaboration-Skills/README.md#install-from-this-repository).
 
 ### Prerequisites
 
@@ -777,6 +856,16 @@ AI-Coding-Tools/
 |   |   +-- mobile-developer.toml
 |   |-- hooks/                       # Git hook integrations
 |   +-- rules/                       # Codex-specific rules
+|
+|-- AI-Collaboration-Skills/         # Standalone cross-agent task continuity plugin
+|   |-- plugin.json                  # Agent Plugins 1.0 portable manifest
+|   |-- mcp.json                     # Portable stdio MCP server
+|   |-- skills/                      # Resume, history, status, checkpoint, handoff
+|   |-- adapters/                    # Claude, Codex, and Cursor native hooks/config
+|   |-- ai_collaboration/            # Dependency-free Python core
+|   |-- hooks/                       # Shared ingest dispatcher + Gemini hooks
+|   |-- com.github.copilot/          # Copilot-specific lifecycle hooks
+|   +-- tests/                       # Standalone continuity test suite
 |
 |-- mcp_server/                      # MCP server (FastMCP 3.x) — 34+ tools
 |   |-- server.py                    # Server entry point + core tools
@@ -1168,6 +1257,8 @@ Health checks:
 | **[ADD_AGENTS.md](ADD_AGENTS.md)**                   | Guide for adding new AI agents                                   |
 | **[orchestrator/README.md](orchestrator/README.md)** | Orchestrator subsystem documentation                             |
 | **[agentic_team/README.md](agentic_team/README.md)** | Agentic team subsystem documentation                             |
+| **[AI-Collaboration-Skills/README.md](AI-Collaboration-Skills/README.md)** | Standalone cross-agent continuity installation and usage         |
+| **[AI-Collaboration-Skills/ARCHITECTURE.md](AI-Collaboration-Skills/ARCHITECTURE.md)** | Event model, storage, hooks, MCP, and host adapter design         |
 | **[docs/](docs/)**                                   | API references, architecture deep-dives, testing guide, security |
 
 ## Screenshots

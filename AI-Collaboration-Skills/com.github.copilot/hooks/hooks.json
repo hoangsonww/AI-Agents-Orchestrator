@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "exec": "python3",
+        "args": [
+          "${PLUGIN_ROOT}/hooks/ingest.py",
+          "--provider",
+          "copilot",
+          "--event",
+          "SessionStart"
+        ],
+        "timeoutSec": 10
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "exec": "python3",
+        "args": [
+          "${PLUGIN_ROOT}/hooks/ingest.py",
+          "--provider",
+          "copilot",
+          "--event",
+          "UserPromptSubmit"
+        ],
+        "timeoutSec": 10
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "exec": "python3",
+        "args": [
+          "${PLUGIN_ROOT}/hooks/ingest.py",
+          "--provider",
+          "copilot",
+          "--event",
+          "PostToolUse"
+        ],
+        "timeoutSec": 10
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "type": "command",
+        "exec": "python3",
+        "args": [
+          "${PLUGIN_ROOT}/hooks/ingest.py",
+          "--provider",
+          "copilot",
+          "--event",
+          "PostToolUseFailure"
+        ],
+        "timeoutSec": 10
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "exec": "python3",
+        "args": [
+          "${PLUGIN_ROOT}/hooks/ingest.py",
+          "--provider",
+          "copilot",
+          "--event",
+          "Stop"
+        ],
+        "timeoutSec": 10
+      }
+    ],
+    "SessionEnd": [
+      {
+        "type": "command",
+        "exec": "python3",
+        "args": [
+          "${PLUGIN_ROOT}/hooks/ingest.py",
+          "--provider",
+          "copilot",
+          "--event",
+          "SessionEnd"
+        ],
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

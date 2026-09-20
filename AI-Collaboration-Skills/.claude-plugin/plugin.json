@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "ai-collaboration",
+  "displayName": "AI Collaboration",
+  "version": "0.1.0",
+  "description": "Preserve coding-task context across AI coding agents.",
+  "author": {
+    "name": "AI Coding Tools Collaborative Contributors",
+    "url": "https://github.com/hoangsonww/AI-Agents-Orchestrator"
+  },
+  "homepage": "https://github.com/hoangsonww/AI-Agents-Orchestrator/tree/main/AI-Collaboration-Skills",
+  "repository": "https://github.com/hoangsonww/AI-Agents-Orchestrator",
+  "license": "MIT",
+  "keywords": [
+    "collaboration",
+    "handoff",
+    "continuity"
+  ],
+  "skills": "./skills/",
+  "hooks": "./adapters/claude/hooks.json",
+  "mcpServers": "./.mcp.json"
+}

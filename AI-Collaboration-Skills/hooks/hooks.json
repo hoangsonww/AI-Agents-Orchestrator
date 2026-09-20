@@ -1,0 +1,65 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "name": "ai-collaboration-session-start",
+            "type": "command",
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event SessionStart",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "name": "ai-collaboration-before-agent",
+            "type": "command",
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event BeforeAgent",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "name": "ai-collaboration-after-tool",
+            "type": "command",
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event AfterTool",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "name": "ai-collaboration-after-agent",
+            "type": "command",
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event AfterAgent",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "name": "ai-collaboration-session-end",
+            "type": "command",
+            "command": "python3 \"${extensionPath}/hooks/ingest.py\" --provider gemini --event SessionEnd",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  }
+}

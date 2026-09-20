@@ -1,0 +1,9 @@
+interface:
+  display_name: "Resume Task"
+  short_description: "Continue work from another AI coding agent"
+  default_prompt: "Use $resume-task to continue the active coding task safely."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "ai-collaboration"
+      description: "Local AI Collaboration continuity tools"

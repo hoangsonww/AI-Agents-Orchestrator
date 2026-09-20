@@ -1,0 +1,35 @@
+{
+  "name": "ai-collaboration",
+  "version": "0.1.0",
+  "description": "Preserve coding-task context across AI coding agents.",
+  "author": {
+    "name": "AI Coding Tools Collaborative Contributors",
+    "url": "https://github.com/hoangsonww/AI-Agents-Orchestrator"
+  },
+  "homepage": "https://github.com/hoangsonww/AI-Agents-Orchestrator/tree/main/AI-Collaboration-Skills",
+  "repository": "https://github.com/hoangsonww/AI-Agents-Orchestrator",
+  "license": "MIT",
+  "keywords": [
+    "agent-collaboration",
+    "handoff",
+    "task-continuity"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "AI Collaboration",
+    "shortDescription": "Continue coding tasks across AI agents.",
+    "longDescription": "Private local task continuity using lifecycle hooks, deterministic context, skills, CLI commands, and MCP tools.",
+    "developerName": "AI Coding Tools Collaborative Contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Local storage",
+      "Task continuity",
+      "MCP tools"
+    ],
+    "defaultPrompt": [
+      "Resume the active coding task with AI Collaboration."
+    ],
+    "brandColor": "#4F46E5"
+  }
+}

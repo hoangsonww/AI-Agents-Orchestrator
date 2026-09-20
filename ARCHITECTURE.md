@@ -21,17 +21,24 @@
   - [Obsidian Vault Export](#obsidian-vault-export)
   - [Graphify — Code Knowledge Graph Engine](#graphify--code-knowledge-graph-engine)
 - [Agentic Infrastructure](#agentic-infrastructure)
+- [AI Collaboration](#ai-collaboration)
+  - [Standalone Runtime Boundary](#standalone-runtime-boundary)
+  - [Passive Capture and Active Retrieval](#passive-capture-and-active-retrieval)
+  - [Task Continuity Data Model](#task-continuity-data-model)
+  - [Host Packaging and Adapters](#host-packaging-and-adapters)
+  - [Storage, Privacy, and Failure Model](#storage-privacy-and-failure-model)
 - [Performance Considerations](#performance-considerations)
 - [Scalability](#scalability)
 - [Optional: MCP Integration Layer](#optional-mcp-integration-layer)
 
 ## Overview
 
-The AI Coding Tools Orchestrator is built on a modular, extensible architecture that enables multiple AI agents to collaborate effectively. The system follows enterprise design patterns and best practices for scalability, reliability, and maintainability.
+AI Coding Tools is a repository of independent but complementary systems: the Orchestrator, Agentic Team, Graphify, AI Collaboration, the root MCP Server, and the Context Dashboard. Each system owns its runtime boundary and can be adopted separately. This document describes those boundaries and the integration surfaces that let them serve different collaboration workflows without collapsing into one coupled application.
 
 ### Core Principles
 
 - **Modularity**: Clear separation of concerns between components
+- **Runtime isolation**: Orchestrator, Agentic Team, Graphify, and AI Collaboration do not require one another to start
 - **Extensibility**: Easy to add new agents and workflows
 - **Reliability**: Robust error handling and retry logic
 - **Performance**: Async execution and intelligent caching
@@ -83,7 +90,7 @@ The `pyproject.toml` pylint configuration follows a strict philosophy: **suppres
 
 ## System Architecture
 
-### High-Level Architecture
+### Orchestrator High-Level Architecture
 
 ```mermaid
 graph TD
@@ -1639,6 +1646,139 @@ flowchart LR
 | `.codex/agents/*.toml` | Codex agent role definitions |
 
 📚 **See [AGENTIC_INFRA.md](AGENTIC_INFRA.md) for complete documentation.**
+
+## AI Collaboration
+
+`AI-Collaboration-Skills/` is an independent, installable product package for task continuity across Claude Code, Codex, Cursor, Gemini CLI, and GitHub Copilot CLI. It is designed for developers who want agents to continue one another's work without routing the task through the Orchestrator or Agentic Team.
+
+The core design principle is a separation between **mechanical capture** and **intentional retrieval**. Host hooks record events without spending model tokens or relying on the agent to remember a skill. When another agent takes over, portable skills, CLI commands, or MCP tools retrieve a bounded, relevant view of the existing task.
+
+### Standalone Runtime Boundary
+
+AI Collaboration is not a third execution mode inside either main runtime. It has its own package manifests, Python entry points, storage directory, schema, tests, documentation, and release surface.
+
+| Property | AI Collaboration behavior |
+|---|---|
+| **Runtime dependencies** | Python standard library and Git only |
+| **Parent imports** | None from `orchestrator/`, `agentic_team/`, `mcp_server/`, or the context graph |
+| **Installation** | The `AI-Collaboration-Skills/` directory is the plugin/extension root |
+| **State location** | `~/.ai-collaboration/`, or `AI_COLLABORATION_HOME` when explicitly configured |
+| **Network service** | None; hooks, CLI, SQLite, object storage, and MCP stdio are local |
+| **Primary abstraction** | A repository-scoped continuity task spanning multiple provider sessions |
+
+This boundary means users can install AI Collaboration without installing the repository's root requirements, starting the web UIs, configuring agent adapters, or running an orchestration engine. Conversely, the Orchestrator and Agentic Team do not depend on AI Collaboration and continue to work when the plugin is absent.
+
+### Passive Capture and Active Retrieval
+
+```mermaid
+flowchart TB
+    subgraph Hosts[Supported agent hosts]
+        Claude[Claude Code]
+        Codex[Codex]
+        Cursor[Cursor]
+        Gemini[Gemini CLI]
+        Copilot[GitHub Copilot CLI]
+    end
+
+    subgraph Passive[Passive plane — no model decision]
+        Hooks[Native lifecycle hooks]
+        Ingest[Shared ingest dispatcher]
+        Normalize[Provider-neutral normalization]
+        Git[Read-only Git snapshot]
+    end
+
+    subgraph State[Private local state]
+        SQLite[(SQLite<br/>tasks, sessions, events, checkpoints)]
+        Objects[(SHA-256 gzip objects<br/>large redacted payloads)]
+    end
+
+    subgraph Active[Active plane — context on demand]
+        Skills[5 portable Agent Skills]
+        MCP[10 standalone MCP tools]
+        CLI[JSON CLI]
+    end
+
+    Hosts --> Hooks
+    Hooks --> Ingest
+    Ingest --> Normalize
+    Git --> Normalize
+    Normalize --> SQLite
+    Normalize --> Objects
+    SQLite --> Skills
+    SQLite --> MCP
+    SQLite --> CLI
+    Objects --> MCP
+```
+
+The passive plane observes session starts, prompts, tool results, failures, stops, and session ends when the host exposes those events. It normalizes vendor field names, captures live Git metadata, redacts credentials, and persists the event. Hooks are deliberately non-intelligent and fail open so capture cannot deny a tool call or terminate an agent session.
+
+The active plane exposes task state only when requested:
+
+- `resume-task` assembles a verified continuation flow;
+- `inspect-history` searches earlier activity without loading a full transcript;
+- `collaboration-status` reports current task, providers, Git state, and checkpoint;
+- `create-checkpoint` records a milestone and concrete next action;
+- `handoff-task` prepares an intentional transfer to another agent;
+- ten MCP tools expose the same task, session, event, search, Git, test, context, and checkpoint operations;
+- the standalone CLI provides scriptable JSON access and task lifecycle commands.
+
+### Task Continuity Data Model
+
+```text
+Repository
+    │
+    └── active Task 1 ──* Session 1 ──* Event
+             │                         │
+             └────────* Checkpoint     └── payload_inline XOR payload_ref
+```
+
+| Entity | Responsibility |
+|---|---|
+| **Task** | Named unit of work scoped to a canonical repository root; one task can be active per repository |
+| **Session** | Provider-prefixed Claude, Codex, Cursor, Gemini, Copilot, or manual session attached to a task |
+| **Event** | Normalized lifecycle record with tool, command, outcome, Git state, and file references |
+| **Checkpoint** | Deliberate milestone with a summary and next action; preferred over inferred next steps |
+
+Large raw hook payloads do not inflate event rows. After recursive credential redaction and size bounding, small payloads stay inline while larger payloads are gzip-compressed into an immutable object addressed by SHA-256. The event retains only the object reference.
+
+Resume context is deterministic rather than model-generated. `ai_collaboration.get_context` combines the active task, current Git branch/head/changes, recent sessions and events, referenced files, captured test commands and outcomes, the latest checkpoint, and a rule-based next action. The incoming agent is still instructed to inspect the current diff because the working tree remains authoritative.
+
+### Host Packaging and Adapters
+
+The portable package is `plugin.json + mcp.json + skills/`. Native manifests add richer lifecycle behavior without forking the core implementation.
+
+| Host | Manifest | Hook mapping | MCP mapping |
+|---|---|---|---|
+| **Agent Plugins 1.0** | `plugin.json` | Client extension | `mcp.json` |
+| **Claude Code** | `.claude-plugin/plugin.json` | `adapters/claude/hooks.json` | `.mcp.json` |
+| **Codex** | Portable manifest plus `.codex-plugin/plugin.json` compatibility | `adapters/codex/hooks.json` | Portable MCP config |
+| **Cursor** | `.cursor-plugin/plugin.json` | `adapters/cursor/hooks.json` | `adapters/cursor/mcp.json` |
+| **Gemini CLI** | `gemini-extension.json` | `hooks/hooks.json` | Native inline MCP config |
+| **GitHub Copilot CLI** | Portable manifest | `com.github.copilot/hooks/hooks.json` | Portable MCP config |
+
+Every hook adapter invokes the same dispatcher:
+
+```bash
+python3 <plugin-root>/hooks/ingest.py --provider <host> --event <event-name>
+```
+
+Provider-specific behavior stops at payload mapping. Storage and retrieval operate only on normalized events, which limits vendor churn to manifests, hook names, and field aliases.
+
+### Storage, Privacy, and Failure Model
+
+SQLite runs in WAL mode with foreign keys, indexed recent-history queries, a five-second busy timeout, and FTS5 search when available. A bounded `LIKE` fallback keeps history search functional when FTS5 is unavailable or receives invalid query syntax. Schema-version metadata provides a migration anchor.
+
+Security and availability controls include:
+
+- recursive redaction for credential-bearing keys, bearer/basic authorization, private keys, and common token formats;
+- private storage directories and database/object permissions where the platform supports POSIX modes;
+- bounded payload serialization to prevent unlimited event growth;
+- fixed MCP internal-error messages and fixed hook diagnostics that do not disclose local paths;
+- Git subprocess argument arrays with no `shell=True` and a three-second timeout;
+- atomic object writes and transactional SQLite rollback;
+- fail-open hook output (`{}` and exit zero) so telemetry cannot interrupt the host agent.
+
+See [`AI-Collaboration-Skills/README.md`](AI-Collaboration-Skills/README.md) for installation and workflows, [`AI-Collaboration-Skills/ARCHITECTURE.md`](AI-Collaboration-Skills/ARCHITECTURE.md) for package-level implementation details, and [`AI-Collaboration-Skills/PRIVACY.md`](AI-Collaboration-Skills/PRIVACY.md) for the threat model and retention guidance.
 
 ## Performance Considerations
 

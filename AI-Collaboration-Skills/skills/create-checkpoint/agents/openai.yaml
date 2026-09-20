@@ -1,0 +1,9 @@
+interface:
+  display_name: "Create Checkpoint"
+  short_description: "Save a durable task continuity checkpoint"
+  default_prompt: "Use $create-checkpoint to save the current task state for later."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "ai-collaboration"
+      description: "Local AI Collaboration continuity tools"
